@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Saudi insurance market — steering cockpit v3 with actuarial twin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#F6F4F9; --card:#FFFFFF; --ink:#1D1A22; --muted:#5E5868; --line:#E3DDEB; --tint:#EFE3FF;
+  --p:#A100FF; --p2:#7500C0; --p3:#460073; --lav:#D9B8FF;
+  --g:#2F7D4F; --a:#E8A317; --r:#C62D3A; --dr:#7E1A26; --na:#C9C2D4; --grid:#E9E4F0;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#141018; --card:#1E1824; --ink:#F3EEF8; --muted:#B9B0C6; --line:#332A3D; --tint:#2A1A3D; --grid:#2B2334; --p2:#C48BFF; }}
+:root[data-theme="dark"]{ --bg:#141018; --card:#1E1824; --ink:#F3EEF8; --muted:#B9B0C6; --line:#332A3D; --tint:#2A1A3D; --grid:#2B2334; --p2:#C48BFF; }
+html{scroll-padding-top:env(safe-area-inset-top,0px)} *{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.4}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:#1D0033;color:#FBF8FF;padding:12px 20px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;border-bottom:3px solid var(--p)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .mark{width:34px;height:34px}
+.brand .word{font-size:20px;font-weight:700;letter-spacing:-.5px;line-height:1}
+.brand .title{font-size:13px;color:var(--lav);margin-top:2px}
+nav{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+nav button{background:transparent;color:#FBF8FF;border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:6px 12px;font-size:13px;cursor:pointer}
+nav button.active{background:var(--p);border-color:var(--p)}
+nav button.ghost{border-style:dashed}
+main{max-width:1360px;margin:0 auto;padding:18px 16px 30px}
+section{display:none} section.active{display:block}
+h2{font-size:21px;margin:6px 0 4px} h3{font-size:14px;margin:0 0 8px;color:var(--p2)}
+.lead{color:var(--muted);font-size:14px;margin:0 0 14px}
+.grid{display:grid;gap:12px} .g4{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))} .g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))} .g3{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kpi .v{font-size:26px;font-weight:700;line-height:1.1;letter-spacing:-.5px} .kpi .l{font-size:12px;color:var(--muted);margin-top:4px} .kpi .d{font-size:12px;font-weight:600;margin-top:4px}
+.up{color:var(--g)} .down{color:var(--r)} .flat{color:var(--muted)}
+.chart{position:relative;height:270px} .chart.tall{height:330px} .chart.short{height:210px}
+.pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700;color:#fff}
+.pill.g{background:var(--g)} .pill.a{background:var(--a);color:#1D1A22} .pill.r{background:var(--r)} .pill.n{background:var(--na);color:#1D1A22}
+table{border-collapse:collapse;width:100%;font-size:13px} th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top} th{color:var(--muted);font-weight:600} td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto} .note{font-size:12px;color:var(--muted)} .src{font-size:11px;color:var(--muted);margin-top:6px}
+select{font:inherit;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 12px}
+.heat{display:grid;grid-template-columns:120px repeat(6,1fr);gap:4px;font-size:12px} .heat div{padding:8px 6px;border-radius:6px;text-align:center} .heat .h{font-weight:600;color:var(--muted)} .heat .rl{text-align:left;font-weight:600}
+.gh{display:grid;gap:3px;font-size:12px} .gh div{padding:6px 4px;border-radius:5px;text-align:center} .gh .h{font-weight:600;color:var(--muted)} .gh .rl{text-align:left;font-weight:600;white-space:nowrap}
+.strip{background:var(--tint);border-left:5px solid var(--p);border-radius:8px;padding:10px 14px;font-size:13px;margin:12px 0}
+textarea{width:100%;height:160px;font-family:ui-monospace,Menlo,monospace;font-size:11px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+footer{max-width:1360px;margin:0 auto;padding:6px 16px 30px;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between;align-items:center;border-top:1px solid var(--line)}
+.wl{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.wl .card b{display:block;margin-bottom:6px}
+.wl .card span{display:block;font-size:12px;margin:2px 0}
+
+.twin-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.ctl{display:flex;flex-direction:column;gap:2px;margin:6px 0}
+.ctl label{font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+.ctl label b{color:var(--ink)}
+.ctl input[type=range]{width:100%;accent-color:var(--p)}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.presets button{font:inherit;font-size:12px;padding:6px 10px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.presets button.on{background:var(--p);color:#fff;border-color:var(--p)}
+.res .v{font-size:24px}
+.delta{font-size:12px;font-weight:600}
+.narr{font-size:13px;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 40 40" aria-label="Accenture mark"><path d="M6 6 L30 20 L6 34 L6 26 L18 20 L6 14 Z" fill="#A100FF"/></svg>
+    <div><div class="word">accenture</div><div class="title">Saudi insurance market · steering cockpit v3 · public data 2015–2025 · all lines · actuarial twin</div></div>
+  </div>
+  <nav id="nav"></nav>
+</header>
+<main>
+<section id="overview" class="active">
+  <h2>Sector at a glance — FY2025</h2>
+  <p class="lead">Eleven years of the Authority's and SAMA's published statistics, read the way a supervisor would: growth, profitability, capital, structure and conduct — then the signals that follow.</p>
+  <div class="grid g4" id="kpis"></div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card"><h3>Gross written premium by segment, SAR bn</h3><div class="chart tall"><canvas id="c_gwp"></canvas></div><div class="src">IA 2025 report p.12; SAMA/IA reports 2020–2022; 2015 SAMA release.</div></div>
+    <div class="card"><h3>Segment mix, % of premium</h3><div class="chart tall"><canvas id="c_mix"></canvas></div><div class="src">Health share fell from 60% (2022) to 57% (2025) as protection &amp; savings grew fourfold.</div></div>
+    <div class="card"><h3>Growth by segment, % year on year</h3><div class="chart"><canvas id="c_growth"></canvas></div><div class="src">Motor: −2.9% (2020), −2.3% (2021), +26.7% (2022), +38% (2023), −2.8% (2024), +12.2% (2025) — a full pricing cycle.</div></div>
+    <div class="card"><h3>Underwriting profitability — loss ratio (to 2022) and net combined ratio (IFRS 17, 2024–25)</h3><div class="chart"><canvas id="c_prof"></canvas></div><div class="src">Loss ratio = net claims incurred / net earned premium, general and health. Not comparable across the 2023 accounting change.</div></div>
+    <div class="card"><h3>Net income, insurance operations and investment income, SAR m</h3><div class="chart"><canvas id="c_ni"></canvas></div><div class="src">SAMA releases 2015–2017; SAMA/IA reports 2019–2025. Insurance-operations result 2020–2022 and investment income where published. 2018 not in the dataset.</div></div>
+    <div class="card"><h3>Penetration (% of non-oil and total GDP) and density (SAR per capita)</h3><div class="chart"><canvas id="c_pen"></canvas></div><div class="src">IA 2025 report p.46; SAMA reports. 2024 density restated by the Authority.</div></div>
+  </div>
+</section>
+
+<section id="lines">
+  <h2>Lines of business</h2>
+  <p class="lead">Nine lines with full detail for 2016–2022 (gross and net written premium, retention, claims paid, commissions, loss ratio 2019–2022), plus the four-segment view to 2025.</p>
+  <div class="row"><label for="lineSel"><b>Line</b></label><select id="lineSel"></select><span class="note" id="lineNote"></span></div>
+  <div class="grid g4" id="lineKpis"></div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card"><h3>Gross vs net written premium, SAR m</h3><div class="chart"><canvas id="l_gwp"></canvas></div></div>
+    <div class="card"><h3>Retention ratio (NWP / GWP), %</h3><div class="chart"><canvas id="l_ret"></canvas></div></div>
+    <div class="card"><h3>Net earned premium vs net claims incurred, SAR m (2019–2022)</h3><div class="chart"><canvas id="l_lr"></canvas></div></div>
+    <div class="card"><h3>Gross claims paid and commission ratio</h3><div class="chart"><canvas id="l_cl"></canvas></div></div>
+  </div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card"><h3>Premium index, all lines (2016 = 100)</h3><div class="chart tall"><canvas id="l_idx"></canvas></div><div class="src">Energy ×3.6 and A&amp;L ×2.5 from a small base; motor below its 2016 level until 2022.</div></div>
+    <div class="card"><h3>Net loss ratio by line, 2019–2022, %</h3><div class="chart tall"><canvas id="l_lrall"></canvas></div><div class="src">Small lines swing widely on single claims (energy 110% in 2020, 27% in 2021).</div></div>
+    <div class="card"><h3>Retention by line, 2016–2022, %</h3><div class="chart tall"><canvas id="l_retall"></canvas></div><div class="src">Health and motor retained; property, engineering, energy and aviation mostly ceded.</div></div>
+    <div class="card"><h3>Commission ratio by line, % of GWP</h3><div class="chart tall"><canvas id="l_comall"></canvas></div><div class="src">Motor acquisition cost fell with the 2018–2020 volume decline and rose again with the 2022 broker shift.</div></div>
+  </div>
+  <div class="card" style="margin-top:12px"><h3>Growth heatmap — premium growth by line and year, %</h3><div class="gh" id="growthHeat"></div><div class="src">Green ≥ 10%, light green 0–10%, amber −10–0%, red below −10%.</div></div>
+  <div class="card" style="margin-top:12px"><h3>All lines, 2022 snapshot</h3><div class="tablewrap"><table id="lineTable"></table></div><div class="src">SAMA/IA 2022 report, tables 1, 4, 7, 8, 9 and line pages.</div></div>
+</section>
+
+<section id="mh">
+  <h2>Motor and health — the two lines that decide the market</h2>
+  <p class="lead">Three-quarters of premium and, in 2025, opposite stories: motor swung to an underwriting loss, health held a thin margin under cost inflation.</p>
+  <div class="grid g4" id="mhKpis"></div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card"><h3>Motor: premium (SAR bn) and loss / claims / combined ratio (%)</h3><div class="chart tall"><canvas id="m_motor"></canvas></div><div class="src">Loss ratio 2019–2022 (pre-IFRS 17); claims and combined ratio 2024–2025 (IFRS 17). The 2023 gap is the accounting change.</div></div>
+    <div class="card"><h3>Health: premium (SAR bn) and loss / claims / combined ratio (%)</h3><div class="chart tall"><canvas id="m_health"></canvas></div><div class="src">Same basis as motor.</div></div>
+    <div class="card"><h3>Motor unit economics 2024 → 2025</h3><div id="motorUnits"></div><div class="src">IA 2025 report p.19; average premium per vehicle = GWP / insured vehicles (written basis, Accenture calculation).</div></div>
+    <div class="card"><h3>Health unit economics 2024 → 2025</h3><div id="healthUnits"></div><div class="src">IA 2025 report p.23; average premium per insured life = GWP / insured lives (Accenture calculation).</div></div>
+    <div class="card"><h3>Motor and health share of net written premium, %</h3><div class="chart"><canvas id="m_share"></canvas></div><div class="src">The two lines carry 92% of net premium in 2022: the market's retained risk is almost entirely short-tail personal lines.</div></div>
+    <div class="card"><h3>Gross claims paid, motor vs health, SAR bn</h3><div class="chart"><canvas id="m_claims"></canvas></div><div class="src">Motor claims paid fell 40% from 2016 to 2020 with the volume and price decline, then rose 50% to 2022.</div></div>
+  </div>
+  <div class="card" style="margin-top:12px"><h3>Net combined ratio 2025 by line and peer group (the Authority's own heatmap)</h3><div class="heat" id="peerHeat"></div><div class="src">IA 2025 report p.17. Bands as published: green &lt;95%, amber 95–100%, red 100–110%, dark red &gt;110%.</div></div>
+</section>
+
+<section id="capital">
+  <h2>Capital, concentration and reinsurance</h2>
+  <p class="lead">Aggregate capital is adequate; the distribution is what matters as the market approaches risk-based capital in 2027.</p>
+  <div class="grid g4" id="capKpis"></div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card"><h3>Insurers by solvency band, 2021–2025 (count)</h3><div class="chart"><canvas id="k_solv"></canvas></div><div class="src">IA 2025 report p.33, read from chart — approximate (±1 per band).</div></div>
+    <div class="card"><h3>Solvency margin by insurer size, 2024 vs 2025, %</h3><div class="chart"><canvas id="k_size"></canvas></div><div class="src">IA 2025 report p.33. Large insurers' capital growth was absorbed by faster growth in required capital; medium shrank on both sides; small held steady.</div></div>
+    <div class="card"><h3>Shareholders' equity, technical reserves and total assets, SAR bn (2019–2022)</h3><div class="chart"><canvas id="k_eq"></canvas></div><div class="src">SAMA/IA reports 2020–2022, balance-sheet pages.</div></div>
+    <div class="card"><h3>Return on equity (net income / equity), %</h3><div class="chart"><canvas id="k_roe"></canvas></div><div class="src">2019–2022 from reported equity; 2023–2025 on 2022 equity (indicative only, equity not in dataset).</div></div>
+    <div class="card"><h3>Concentration: HHI by line, 2024 vs 2025</h3><div class="chart"><canvas id="k_conc"></canvas></div><div class="src">IA 2025 p.44. Above 2,500 is highly concentrated; health and P&amp;S both are. Top-3 write 65% of premium.</div></div>
+    <div class="card"><h3>Retention by line 2022 (%) — where risk leaves the Kingdom</h3><div class="chart"><canvas id="k_ret"></canvas></div><div class="src">SAMA/IA 2022 report, table 7. 2025 market cession 13.0%, 80% placed abroad, 63% facultative (IA 2025 p.39–41).</div></div>
+    <div class="card"><h3>Facultative share of ceded premium, %</h3><div class="chart short"><canvas id="k_fac"></canvas></div><div class="src">IA 2025 report p.41. Two-thirds of cessions are facultative: capacity is bought risk by risk.</div></div>
+    <div class="card"><h3>Gross written premium by company, 2022 (anonymised), SAR m</h3><div class="chart short"><canvas id="k_top8"></canvas></div><div class="src">SAMA/IA 2022 report p.43. Top 8 write 77.5%; the remaining 19 share 22.5%.</div></div>
+  </div>
+</section>
+
+<section id="structure">
+  <h2>Market structure — distribution, clients, regions, workforce</h2>
+  <p class="lead">How premium is sold and to whom: the channels and client segments that shape conduct risk and the workforce that carries the market.</p>
+  <div class="grid g4" id="stKpis"></div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card"><h3>Distribution channel, % of premium</h3><div class="chart"><canvas id="s_chan"></canvas></div><div class="src">SAMA/IA reports 2020–2022. Brokers rose from 34% to 43% in three years; online sales 9.9% in 2022.</div></div>
+    <div class="card"><h3>Client segment, % of premium</h3><div class="chart"><canvas id="s_cli"></canvas></div><div class="src">Large enterprises write two-thirds of premium; retail is mostly motor (53% of motor premium is individual).</div></div>
+    <div class="card"><h3>Geographic region, % of premium</h3><div class="chart"><canvas id="s_reg"></canvas></div><div class="src">Central region 54% in 2022; Western share fell from 31% to 24%.</div></div>
+    <div class="card"><h3>Insurance-company employees and Saudization, %</h3><div class="chart"><canvas id="s_emp"></canvas></div><div class="src">Headcount fell 7% over three years while Saudization rose from 74% to 79%.</div></div>
+    <div class="card"><h3>Density by segment, SAR per capita</h3><div class="chart"><canvas id="s_den"></canvas></div><div class="src">Health per-capita spend rose 60% from 2016 to 2022; general insurance only 7%.</div></div>
+    <div class="card"><h3>Complaints 2025 — density per 10,000 policies by line</h3><div class="chart short"><canvas id="s_comp"></canvas></div><div class="src">IA 2025 p.48: 440,000+ complaints; monthly volume 26k in January to 44k in December; 76% about claims.</div></div>
+  </div>
+</section>
+
+<section id="signals">
+  <h2>Signals — a rule-based first pass at the ISME logic</h2>
+  <p class="lead">Each indicator is scored against a published cut-off, its own history or year-on-year change. Illustrative thresholds; calibration is what ISME replaces them with.</p>
+  <div class="grid g3" id="sigKpis"></div>
+  <div class="card" style="margin-top:12px"><div class="tablewrap"><table id="sigTable"></table></div></div>
+  <h3 style="margin-top:14px">The Authority's five 2026 watch items — and the indicators that track them here</h3>
+  <div class="wl" id="watch"></div>
+  <div class="strip"><b>Reading:</b> a growth market with thinning margins — motor loss-making, health margin narrowing, capital buffers down 10 points, complaints up 70% within the year. Sector data can only say so much: the same rules applied insurer by insurer are what turn this into supervision.</div>
+</section>
+
+
+<section id="twin">
+  <h2>Actuarial twin — what if, on the Authority's own numbers</h2>
+  <p class="lead">A sector-level twin of FY2025: four segments (health, motor, P&amp;C, protection &amp; savings) with premium, net earned premium, claims and expense ratios, investment income, capital and a synthetic distribution of 25 insurers calibrated to the published solvency bands. Move the drivers, or pick a scenario, and the twin projects FY2026: combined ratios, underwriting result, net income, solvency and how many insurers fall below 125% and 100%. Illustrative — every assumption is listed in the register below and can be changed.</p>
+  <div class="presets" id="presets"></div>
+  <div class="twin-grid">
+    <div class="card"><h3>Motor</h3><div id="ctl_motor"></div></div>
+    <div class="card"><h3>Health</h3><div id="ctl_health"></div></div>
+    <div class="card"><h3>P&amp;C and reinsurance</h3><div id="ctl_pc"></div></div>
+    <div class="card"><h3>Protection &amp; savings, expenses, investments</h3><div id="ctl_other"></div></div>
+    <div class="card"><h3>Capital and RBC</h3><div id="ctl_cap"></div></div>
+    <div class="card"><h3>Narrative</h3><div class="narr" id="t_narr"></div></div>
+  </div>
+  <div class="grid g4 res" style="margin-top:12px" id="t_kpis"></div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card"><h3>Net combined ratio by segment — FY2025 baseline vs FY2026 scenario, %</h3><div class="chart tall"><canvas id="t_cr"></canvas></div><div class="src">Health and motor 2025 ratios as published; P&amp;C and P&amp;S ratios assumed (see register). Market = net-earned-premium weighted.</div></div>
+    <div class="card"><h3>Net income bridge FY2025 → FY2026, SAR m</h3><div class="chart tall"><canvas id="t_bridge"></canvas></div><div class="src">Deltas relative to FY2025: underwriting result by segment, catastrophe loss, investment income. Zakat, tax and other items held at FY2025 level.</div></div>
+    <div class="card"><h3>Insurers by solvency band — baseline vs scenario (synthetic distribution)</h3><div class="chart"><canvas id="t_solv"></canvas></div><div class="src">25 synthetic insurers sized on the 2022 company distribution, assigned to the Authority's six peer groups and to the 2025 solvency bands. Not real insurers.</div></div>
+    <div class="card"><h3>Monte Carlo — 2,000 draws around the scenario: net income FY2026, SAR m</h3><div class="chart"><canvas id="t_mc"></canvas></div><div class="src">Drivers perturbed with the standard deviations in the register; catastrophe events drawn with 30% probability. Percentiles and probabilities in the tiles above.</div></div>
+  </div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card"><h3>Twin diagnostic — what 2025 implied</h3><div id="t_diag"></div><div class="src">Back-solved from the 2024 and 2025 published motor and health figures. This is the kind of test ISME would run every quarter.</div></div>
+    <div class="card"><h3>Assumptions register</h3><div class="tablewrap"><table id="t_assump"></table></div></div>
+  </div>
+  <div class="strip"><b>How to read it:</b> the twin is deterministic on the sliders and stochastic in the Monte Carlo panel; it projects one year, at sector level, with no management action. Outputs are directions and orders of magnitude, not forecasts. At insurer level, ISME would replace the synthetic distribution with ICDC data and the assumed ratios with each insurer's own.</div>
+</section>
+
+<section id="data">
+  <h2>Data and sources</h2>
+  <p class="lead">Everything shown here comes from the Authority's and SAMA's published market reports. Values are transcribed from the report tables; where a value is read from a chart it is flagged.</p>
+  <div class="card"><h3>Sources</h3><div class="tablewrap"><table id="srcTable"></table></div></div>
+  <div class="card" style="margin-top:12px"><h3>Notes and known gaps</h3><ul id="notes" style="font-size:13px;margin:0;padding-left:18px"></ul></div>
+  <div class="card" style="margin-top:12px"><h3>Segment premium table, SAR m</h3><div class="tablewrap"><table id="segTable"></table></div></div>
+  <div class="card" style="margin-top:12px"><h3>Dataset (JSON) — select all and copy</h3><textarea id="json" readonly></textarea></div>
+</section>
+</main>
+<footer>
+  <div><b>Created by Makram Ben Dbabis</b> · Accenture — Insurance, Actuarial &amp; AI · v3.0 · September 2026</div>
+  <div>Prototype on public data for the ISME pursuit. Not an official Insurance Authority product. Sector view only: insurer-level scoring requires ICDC data.</div>
+</footer>
+<script>
+const D = {"years": [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], "seg_gwp": {"Health": {"2015": 18970, "2016": 18630.3, "2017": 19035.5, "2018": 19883.4, "2019": 22474.9, "2020": 22836.8, "2021": 25109.3, "2022": 31829.8, "2023": 38630, "2024": 42250, "2025": 47750}, "Motor": {"2016": 12158.4, "2017": 11136.4, "2018": 9423.3, "2019": 8603.6, "2020": 8358.0, "2021": 8162.6, "2022": 10340.6, "2023": 14290, "2024": 13890, "2025": 15590}, "P&C (general excl. motor)": {"2016": 5015.3, "2017": 5191.0, "2018": 4605.0, "2019": 5677.0, "2020": 6320.3, "2021": 7051.3, "2022": 9312.2, "2023": 9980, "2024": 12300, "2025": 12780}, "Protection & savings": {"2015": 1036, "2016": 1051.4, "2017": 1140.3, "2018": 1102.7, "2019": 1134.9, "2020": 1263.6, "2021": 1707.2, "2022": 1873.6, "2023": 2570, "2024": 7700, "2025": 8160}, "Total": {"2014": 30480, "2015": 36490, "2016": 36855.3, "2017": 36503.2, "2018": 35014.5, "2019": 37890.5, "2020": 38778.7, "2021": 42030.5, "2022": 53356.2, "2023": 65460, "2024": 76140, "2025": 84270}}, "lines": {"Health": {"gwp": {"2016": 18630.3, "2017": 19035.5, "2018": 19883.4, "2019": 22474.9, "2020": 22836.8, "2021": 25109.3, "2022": 31829.8}, "nwp": {"2016": 18095.0, "2017": 18411.6, "2018": 19319.4, "2019": 21622.0, "2020": 21924.7, "2021": 24221.7, "2022": 31286.8}, "claims_paid": {"2016": 14547.8, "2017": 15479.2, "2018": 17628.9, "2019": 18540.9, "2020": 18664.6, "2021": 20217.5, "2022": 22758.2}, "commissions": {"2016": 690.6, "2017": 762.8, "2018": 615.8, "2019": 769.7, "2020": 1180.7, "2021": 894.5, "2022": 1243.0}, "nep": {"2019": 20899, "2020": 21789, "2021": 22760, "2022": 28457.1}, "nci": {"2019": 18345, "2020": 17991, "2021": 19735, "2022": 24209.7}}, "Motor": {"gwp": {"2016": 12158.4, "2017": 11136.4, "2018": 9423.3, "2019": 8603.6, "2020": 8358.0, "2021": 8162.6, "2022": 10340.6}, "nwp": {"2016": 10720.4, "2017": 10388.2, "2018": 8860.4, "2019": 8117.1, "2020": 7763.5, "2021": 7691.1, "2022": 9860.6}, "claims_paid": {"2016": 9059.4, "2017": 8314.1, "2018": 6929.8, "2019": 6507.0, "2020": 5478.6, "2021": 6842.6, "2022": 8192.5}, "commissions": {"2016": 777.5, "2017": 780.8, "2018": 502.6, "2019": 521.1, "2020": 560.2, "2021": 644.0, "2022": 823.5}, "nep": {"2019": 8211.1, "2020": 7761.9, "2021": 7517.2, "2022": 8501.9}, "nci": {"2019": 5999.8, "2020": 5171.5, "2021": 6199.6, "2022": 7782.5}}, "Property / fire": {"gwp": {"2016": 1825.8, "2017": 1708.5, "2018": 1697.9, "2019": 1844.6, "2020": 2109.2, "2021": 2282.1, "2022": 2463.1}, "nwp": {"2016": 272.7, "2017": 322.4, "2018": 314.0, "2019": 314.6, "2020": 362.7, "2021": 422.5, "2022": 489.9}, "claims_paid": {"2016": 1033.8, "2017": 961.1, "2018": 624.4, "2019": 699.1, "2020": 303.3, "2021": 488.5, "2022": 736.7}, "commissions": {"2016": 109.2, "2017": 117.4, "2018": 103.6, "2019": 169.4, "2020": 156.6, "2021": 180.5, "2022": 209.1}, "nep": {"2019": 316.7, "2020": 322.8, "2021": 400.4, "2022": 465.8}, "nci": {"2019": 118.1, "2020": 161.1, "2021": 189.3, "2022": 252.9}}, "Engineering": {"gwp": {"2016": 908.4, "2017": 932.4, "2018": 701.7, "2019": 1198.4, "2020": 1061.8, "2021": 1002.0, "2022": 1593.8}, "nwp": {"2016": 199.2, "2017": 168.6, "2018": 120.2, "2019": 144.2, "2020": 236.5, "2021": 189.1, "2022": 226.8}, "claims_paid": {"2016": 358.0, "2017": 748.0, "2018": 456.8, "2019": 284.6, "2020": 267.3, "2021": 634.3, "2022": 119.5}, "commissions": {"2016": 53.9, "2017": 51.5, "2018": 36.6, "2019": 65.5, "2020": 81.9, "2021": 87.9, "2022": 96.9}, "nep": {"2019": 139.6, "2020": 181.1, "2021": 176.0, "2022": 208.5}, "nci": {"2019": 59.3, "2020": 39.1, "2021": 57.3, "2022": 34.9}}, "A&L and other": {"gwp": {"2016": 1049.5, "2017": 1054.2, "2018": 1001.3, "2019": 1121.4, "2020": 1369.9, "2021": 1586.4, "2022": 2675.7}, "nwp": {"2016": 525.4, "2017": 506.3, "2018": 470.4, "2019": 486.6, "2020": 637.2, "2021": 773.8, "2022": 1342.0}, "claims_paid": {"2016": 240.7, "2017": 310.8, "2018": 263.3, "2019": 265.2, "2020": 336.5, "2021": 289.6, "2022": 278.5}, "commissions": {"2016": 101.8, "2017": 85.0, "2018": 86.3, "2019": 119.5, "2020": 141.6, "2021": 171.5, "2022": 189.0}, "nep": {"2019": 496.8, "2020": 586.2, "2021": 702.6, "2022": 1158.7}, "nci": {"2019": 176.5, "2020": 176.2, "2021": 245.1, "2022": 203.3}}, "Marine": {"gwp": {"2016": 634.1, "2017": 621.8, "2018": 544.6, "2019": 653.6, "2020": 690.0, "2021": 696.3, "2022": 692.3}, "nwp": {"2016": 192.3, "2017": 172.4, "2018": 155.4, "2019": 181.2, "2020": 176.6, "2021": 194.4, "2022": 208.1}, "claims_paid": {"2016": 263.7, "2017": 207.7, "2018": 223.7, "2019": 444.3, "2020": 269.2, "2021": 221.6, "2022": 220.1}, "commissions": {"2016": 39.3, "2017": 43.2, "2018": 35.9, "2019": 58.1, "2020": 64.0, "2021": 52.0, "2022": 70.7}, "nep": {"2019": 176.5, "2020": 171.7, "2021": 188.2, "2022": 207.7}, "nci": {"2019": 65.8, "2020": 83.2, "2021": 77.4, "2022": 66.6}}, "Energy": {"gwp": {"2016": 457.8, "2017": 739.0, "2018": 511.5, "2019": 700.4, "2020": 910.8, "2021": 1295.3, "2022": 1652.7}, "nwp": {"2016": 12.6, "2017": 17.2, "2018": 3.5, "2019": 12.8, "2020": 16.9, "2021": 22.7, "2022": 32.0}, "claims_paid": {"2016": 53.2, "2017": 18.6, "2018": 356.8, "2019": 1048.5, "2020": 909.9, "2021": 98.0, "2022": 635.6}, "commissions": {"2016": 1.6, "2017": 1.1, "2018": 1.2, "2019": 5.5, "2020": 9.5, "2021": 11.3, "2022": 12.9}, "nep": {"2019": 7.8, "2020": 14.5, "2021": 21.7, "2022": 23.8}, "nci": {"2019": 3.0, "2020": 16.0, "2021": 5.7, "2022": 14.3}}, "Aviation": {"gwp": {"2016": 139.7, "2017": 134.9, "2018": 148.0, "2019": 158.5, "2020": 178.6, "2021": 189.1, "2022": 234.6}, "nwp": {"2016": 9.1, "2017": 5.7, "2018": 5.3, "2019": 4.0, "2020": 8.7, "2021": 7.9, "2022": 5.4}, "claims_paid": {"2016": 92.6, "2017": 18.1, "2018": 123.8, "2019": 84.8, "2020": 27.9, "2021": 15.7, "2022": 49.6}, "commissions": {"2016": 0.8, "2017": 1.1, "2018": 1.3, "2019": 2.0, "2020": 2.8, "2021": 3.4, "2022": 4.5}, "nep": {"2019": 5.4, "2020": 7.9, "2021": 7.1, "2022": 4.5}, "nci": {"2019": 1.4, "2020": -0.6, "2021": 1.6, "2022": 2.2}}, "Protection & savings": {"gwp": {"2016": 1051.4, "2017": 1140.3, "2018": 1102.7, "2019": 1134.9, "2020": 1263.6, "2021": 1707.2, "2022": 1873.6}, "nwp": {"2016": 820.6, "2017": 846.2, "2018": 794.8, "2019": 797.2, "2020": 859.4, "2021": 1078.5, "2022": 1192.1}, "claims_paid": {"2016": 420.0, "2017": 498.5, "2018": 629.3, "2019": 578.8, "2020": 652.2, "2021": 1029.9, "2022": 967.5}, "commissions": {"2016": 24.3, "2017": 30.5, "2018": 19.4, "2019": 52.7, "2020": 73.9, "2021": 51.5, "2022": 158.6}, "nep": {"2019": 717.9, "2020": 854.6, "2021": 1077.0, "2022": 1184.8}, "nci": {"2019": 531.3, "2020": 640.0, "2021": 900.8, "2022": 783.7}}}, "market": {"nep_gh": {"2016": 30202, "2017": 29919, "2018": 29211, "2019": 30253, "2020": 30836, "2021": 31773, "2022": 39028.2}, "nci_gh": {"2016": 23416, "2017": 24314, "2018": 24027, "2019": 24769, "2020": 23637, "2021": 26511, "2022": 32566.3}, "loss_ratio_gh": {"2016": 77.5, "2017": 81.3, "2018": 82.3, "2019": 81.9, "2020": 76.7, "2021": 83.4, "2022": 83.4}, "nwp_total": {"2016": 30847.5, "2017": 30838.7, "2018": 30043.4, "2019": 31679.7, "2020": 31986.3, "2021": 34601.6, "2022": 44643.6}, "claims_paid_total": {"2016": 26069.2, "2017": 26556.0, "2018": 27236.8, "2019": 28453.2, "2020": 26909.5, "2021": 29837.8, "2022": 33958.1}, "commissions_total": {"2016": 1799.0, "2017": 1873.3, "2018": 1402.8, "2019": 1763.5, "2020": 2271.2, "2021": 2096.6, "2022": 2808.1}, "net_income": {"2015": 810, "2016": 2104, "2017": 688, "2019": 858, "2020": 1386, "2021": -47, "2022": 689, "2023": 3200, "2024": 3600, "2025": 1900}, "net_investment_income": {"2020": 835, "2021": 1159, "2022": 1074, "2024": 3460, "2025": 2240}, "combined_ratio": {"2024": 97.7, "2025": 99.9}, "expense_ratio": {"2024": 12.2, "2025": 14.6}, "penetration_nonoil": {"2016": 2.06, "2017": 1.99, "2018": 1.82, "2019": 1.85, "2020": 1.92, "2021": 1.91, "2022": 2.09, "2023": 2.38, "2024": 2.59, "2025": 2.25}, "penetration_gdp": {"2016": 1.54, "2017": 1.42, "2018": 1.19, "2019": 1.27, "2020": 1.48, "2021": 1.34, "2022": 1.28}, "density": {"2016": 1159, "2017": 1121, "2018": 1048, "2019": 1107, "2020": 1095, "2021": 1200, "2022": 1564, "2023": 2034, "2024": 2259, "2025": 2367}, "top8_share": {"2020": 75.8, "2021": 77.2, "2022": 77.5}, "top3_share": {"2024": 65.0, "2025": 65.0}, "hhi_total": {"2024": 1555, "2025": 1637}, "hhi_lines": {"Health": {"2024": 3065, "2025": 3207}, "Motor": {"2024": 948, "2025": 917}, "P&C": {"2024": 1358, "2025": 1545}, "P&S": {"2024": 5003, "2025": 6257}}, "insurers": {"2016": 34, "2020": 30, "2021": 29, "2022": 27, "2024": 27, "2025": 25}, "solvency_avg": {"2024": 166, "2025": 156}, "solvency_median": {"2024": 161, "2025": 142}, "solvency_by_size": {"Large": {"2024": 168, "2025": 155}, "Medium": {"2024": 171, "2025": 169}, "Small": {"2024": 123, "2025": 124}}, "solvency_bands": {"years": [2021, 2022, 2023, 2024, 2025], ">150%": [14, 14, 13, 15, 12], "125-150%": [3, 4, 7, 7, 5], "100-125%": [3, 3, 4, 3, 6], "<100%": [4, 5, 3, 2, 2]}, "equity": {"2019": 16274, "2020": 18438, "2021": 18869, "2022": 19897}, "technical_reserves": {"2019": 33105, "2020": 32407, "2021": 34896, "2022": 43129}, "total_assets": {"2019": 63925, "2020": 67643, "2021": 69683, "2022": 80533}, "ceded": {"2024": 11000, "2025": 10950}, "cession_ratio": {"2024": 14.4, "2025": 13.0}, "ceded_abroad_pct": {"2024": 88.6, "2025": 80.2}, "facultative_pct": {"2021": 62, "2022": 65, "2023": 66, "2024": 67, "2025": 63}, "complaints_2025": {"total": 440000, "jan": 26000, "dec": 44000, "claims_share": 76, "density_per_10k": {"Motor": 12.4, "Health": 9.0, "General": 6.4}}, "saudization": {"2019": 74, "2020": 75, "2021": 77, "2022": 79}, "top8_gwp_2022": [14350, 13897, 3470, 2855, 2642, 1567, 1403, 1177, 11996], "channels": {"years": [2019, 2020, 2021, 2022], "Direct (insurer)": [57.4, 57.9, 56.4, 52.1], "Agent": [8.4, 7.0, 5.2, 4.6], "Broker": [34.2, 35.1, 38.4, 43.4]}, "clients": {"years": [2019, 2020, 2021, 2022], "Retail": [12.6, 14.6, 12.9, 14.8], "Micro": [3.5, 3.5, 4.0, 4.9], "Small": [6.2, 5.9, 6.3, 6.0], "Medium": [12.3, 12.2, 11.2, 10.2], "Large": [65.3, 63.7, 65.6, 64.1]}, "regions": {"years": [2019, 2020, 2021, 2022], "Central": [50.0, 50.0, 50.8, 54.0], "Western": [26.0, 31.0, 27.5, 24.1], "Eastern": [20.0, 16.0, 19.0, 17.8], "Other": [4.0, 3.0, 2.7, 4.2]}, "employees": {"2019": 11213, "2020": 11015, "2021": 10902, "2022": 10428}, "ins_ops_income": {"2020": 551, "2021": -1206, "2022": -385}, "underwriting_result": {"2019": 952, "2020": 1848}, "top8_2022": {"labels": ["Co. 1", "Co. 2", "Co. 3", "Co. 4", "Co. 5", "Co. 6", "Co. 7", "Co. 8", "Other 19"], "gwp": [14350, 13897, 3470, 2855, 2642, 1567, 1403, 1177, 11996]}, "density_seg": {"years": [2016, 2017, 2018, 2019, 2020, 2021, 2022], "General": [540.26, 501.58, 419.84, 417.34, 414.42, 434.52, 576.14], "Health": [586.09, 584.77, 595.07, 656.82, 644.76, 717.14, 933.13], "P&S": [33.08, 35.03, 33.0, 33.17, 35.68, 48.76, 54.93]}, "online_share": {"2020": 6.9, "2021": 7.5, "2022": 9.9}, "brokers_2022": {"total_gwp": 23100, "top10_share": 73, "count": 84}, "watchlist_2026": [{"item": "Motor prices vs supply-chain costs", "indicators": ["Motor premium growth vs vehicles", "Net combined ratio, motor", "Motor complaint density"]}, {"item": "Health cost inflation", "indicators": ["Net combined ratio, health", "Health premium per life vs claims ratio"]}, {"item": "Marine cover and geopolitics", "indicators": ["Cessions placed abroad", "Marine retention 2022"]}, {"item": "Capital ahead of RBC 2027", "indicators": ["Average solvency margin", "Insurers below 100% coverage", "Small insurers, average margin"]}, {"item": "Conduct and the consumer", "indicators": ["Complaints, January to December 2025", "Motor complaint density"]}]}, "ifrs17": {"Health": {"combined": {"2024": 94.7, "2025": 96.1}, "claims_ratio": {"2024": 83.1, "2025": 83.0}, "expense_ratio": {"2024": 11.1, "2025": 12.7}, "lives_m": {"2024": 13.1, "2025": 14.5}, "retention": {"2024": 98.7, "2025": 98.5}}, "Motor": {"combined": {"2024": 87.2, "2025": 107.3}, "claims_ratio": {"2024": 70.4, "2025": 84.0}, "expense_ratio": {"2024": 16.0, "2025": 22.3}, "vehicles_m": {"2024": 10.3, "2025": 11.0}, "retention": {"2024": 98.7, "2025": 99.1}}, "peer_cr_2025": {"groups": ["Market leaders", "Health focus", "Motor focus", "Commercial focus", "Diversified", "Reinsurers"], "Health": [95.1, 99.6, 103.5, 117.1, 98.9, 89.3], "Motor": [94.7, 106.4, 113.7, 121.4, 115.6, 86.4], "P&C": [91.6, 94.8, 95.4, 99.9, 97.3, 90.4], "P&S": [100.0, null, 91.3, 101.6, 96.5, 82.8]}}, "sources": [{"id": "IA2025", "name": "IA, Saudi Insurance Market Report 2025 (Arabic)", "covers": "2021–2025 segments; 2024–2025 line detail; solvency, concentration, reinsurance, complaints", "pages": "8, 12, 14, 16, 17, 19, 21, 23, 33, 34, 37, 39, 41, 44, 46, 48, 51"}, {"id": "SAMA2022", "name": "SAMA/IA, The Saudi Insurance Market Report 2022 (bilingual)", "covers": "2018–2022 by line: GWP, NWP, retention, claims paid, commissions, NEP/NCI, balance sheet", "pages": "9–53"}, {"id": "SAMA2021", "name": "SAMA, The Saudi Insurance Market Report 2021 (English)", "covers": "2017–2021 by line; 2020–2021 line loss ratios", "pages": "8–50"}, {"id": "SAMA2020", "name": "SAMA, The Saudi Insurance Market Report 2020 (English)", "covers": "2016–2020 by line; 2019–2020 line loss ratios; market loss ratio 2016–2020", "pages": "9–51"}, {"id": "SAMA-news", "name": "SAMA press releases 2017–2018; SPA releases 2023–2026", "covers": "2015–2017 totals and net income; 2023–2024 headline GWP, net income, penetration", "pages": "—"}], "notes": ["All amounts in SAR million unless stated. Loss ratio = net claims incurred / net earned premiums (general and health), pre-IFRS 17 basis up to 2022.", "From 2023 the market reports under IFRS 17: combined ratios (2024–2025) are not comparable with earlier loss ratios.", "2023 and 2024 line-of-business detail below the four segments is not in this dataset (the Authority's 2023/2024 report files were not machine-readable at build time).", "Solvency-band counts 2021–2025 are read from a chart in the 2025 report and are approximate (±1).", "2024 insurance density restated by the Authority in the 2025 report (population revision); 2014 total is derived from the 2015 growth rate."], "meta": {"creator": "Makram Ben Dbabis", "org": "Accenture — Insurance, Actuarial & AI", "built": "September 2026", "version": "2.0"}};
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = (n,d=1) => n==null?'—':Number(n).toLocaleString('en',{maximumFractionDigits:d,minimumFractionDigits:d});
+const fmt0 = n => n==null?'—':Number(n).toLocaleString('en',{maximumFractionDigits:0});
+const yrs = (o)=>Object.keys(o).map(Number).sort((a,b)=>a-b);
+const at = (o,y)=> (o && o[y]!==undefined)?o[y]:null;
+const yoy = (o,y)=> (at(o,y)!=null && at(o,y-1)!=null && at(o,y-1)!=0) ? (at(o,y)/at(o,y-1)-1)*100 : null;
+const M=D.market, S=D.seg_gwp, Y=D.years, LN=Object.keys(D.lines);
+
+// ---------- nav + theme
+const tabs=[['overview','Overview'],['lines','Lines'],['mh','Motor & health'],['capital','Capital & reinsurance'],['structure','Market structure'],['signals','Signals & 2026 watch list'],['twin','Actuarial twin'],['data','Data & sources']];
+const nav=document.getElementById('nav');
+tabs.forEach(([id,label],i)=>{const b=document.createElement('button');b.textContent=label;if(i===0)b.classList.add('active');b.onclick=()=>{document.querySelectorAll('section').forEach(s=>s.classList.toggle('active',s.id===id));nav.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));window.scrollTo({top:0});};nav.appendChild(b);});
+const tb=document.createElement('button');tb.className='ghost';tb.textContent='☾ / ☀';tb.title='Toggle theme';tb.onclick=()=>{const r=document.documentElement;const cur=r.getAttribute('data-theme');const dark=cur?cur==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;r.setAttribute('data-theme',dark?'light':'dark');try{localStorage.setItem('cockpit-theme',dark?'light':'dark');}catch(e){}renderAll();};nav.appendChild(tb);
+try{const t=localStorage.getItem('cockpit-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}
+
+// ---------- chart helpers
+const charts={};
+function mk(id,cfg){ if(charts[id]) charts[id].destroy(); const el=document.getElementById(id); if(!el) return; charts[id]=new Chart(el.getContext('2d'),cfg); }
+let P,P2,P3,LAV,G,A,R,NA,GL;
+function palette(){P=css('--p');P2=css('--p2');P3='#460073';LAV='#C9A6F2';G=css('--g');A=css('--a');R=css('--r');NA=css('--na');GL='#7FB98F';Chart.defaults.color=css('--muted');Chart.defaults.borderColor=css('--grid');Chart.defaults.font.family=getComputedStyle(document.body).fontFamily;Chart.defaults.font.size=12;}
+const baseOpts=(extra={})=>({responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:12}}},scales:{x:{grid:{display:false}},y:{beginAtZero:false}},...extra});
+function kpi(v,l,d,cls){return `<div class="card kpi"><div class="v">${v}</div><div class="l">${l}</div><div class="d ${cls||'flat'}">${d||''}</div></div>`;}
+const lineColors=['#460073','#7500C0','#A100FF','#C9A6F2','#2F7D4F','#E8A317','#C62D3A','#3C6E9F','#7E1A26'];
+
+function renderOverview(){
+  const cagr=(Math.pow(S.Total[2025]/S.Total[2015],1/10)-1)*100;
+  const roe25=M.net_income[2025]/M.equity[2022]*100;
+  document.getElementById('kpis').innerHTML =
+   kpi('SAR '+fmt(S.Total[2025]/1000,1)+'bn','Gross written premium 2025','+'+fmt(yoy(S.Total,2025),1)+'% vs 2024 · 10-yr CAGR '+fmt(cagr,1)+'%','up')+
+   kpi(fmt(M.combined_ratio[2025],1)+'%','Net combined ratio 2025','+'+fmt(M.combined_ratio[2025]-M.combined_ratio[2024],1)+' pts · expense ratio '+M.expense_ratio[2025]+'%','down')+
+   kpi('SAR '+fmt(M.net_income[2025]/1000,1)+'bn','Net income 2025',fmt(yoy(M.net_income,2025),0)+'% vs 2024 · investment income −35%','down')+
+   kpi(M.solvency_avg[2025]+'%','Average solvency margin 2025',(M.solvency_avg[2025]-M.solvency_avg[2024])+' pts · median '+M.solvency_median[2025]+'%','down')+
+   kpi(fmt(M.penetration_nonoil[2025],2)+'%','Penetration of non-oil GDP',fmt(M.penetration_nonoil[2025]-M.penetration_nonoil[2024],2)+' pts vs 2024','down')+
+   kpi('SAR '+fmt0(M.density[2025]),'Density per capita 2025','+'+fmt(yoy(M.density,2025),1)+'% vs 2024 · ×2 since 2021','up')+
+   kpi(M.insurers[2025],'Insurers reporting 2025','27 in 2024 · 34 in 2016 · top 3 write 65%','flat')+
+   kpi(fmt0(M.hhi_total[2025]),'Market HHI 2025','+'+fmt(yoy(M.hhi_total,2025),1)+'% vs 2024','down')+
+   kpi(fmt(M.cession_ratio[2025],1)+'%','Premium ceded 2025',fmt(M.ceded_abroad_pct[2025],0)+'% placed abroad · '+M.facultative_pct[2025]+'% facultative','flat')+
+   kpi('440k+','Complaints 2025','26k → 44k per month · 76% about claims','down')+
+   kpi(fmt(S.Health[2025]/S.Total[2025]*100,0)+'% / '+fmt(S.Motor[2025]/S.Total[2025]*100,0)+'%','Health / motor share of premium','together '+fmt((S.Health[2025]+S.Motor[2025])/S.Total[2025]*100,0)+'% of the market','flat')+
+   kpi(fmt(M.loss_ratio_gh[2022],1)+'%','Last pre-IFRS 17 loss ratio (2022)','76.7% in 2020, 83.4% in 2021–22','flat');
+  mk('c_gwp',{type:'bar',data:{labels:Y,datasets:[
+   {label:'Health',data:Y.map(y=>at(S.Health,y)/1000),backgroundColor:P3},
+   {label:'Motor',data:Y.map(y=>at(S.Motor,y)/1000),backgroundColor:P2},
+   {label:'P&C',data:Y.map(y=>at(S['P&C (general excl. motor)'],y)/1000),backgroundColor:P},
+   {label:'Protection & savings',data:Y.map(y=>at(S['Protection & savings'],y)/1000),backgroundColor:LAV}]},
+   options:baseOpts({scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,title:{display:true,text:'SAR bn'}}},plugins:{legend:{position:'bottom'},tooltip:{callbacks:{footer:(items)=>'Total: SAR '+fmt(at(S.Total,+items[0].label)/1000,1)+'bn'}}}})});
+  const mixY=Y.filter(y=>at(S.Motor,y)!=null);
+  mk('c_mix',{type:'bar',data:{labels:mixY,datasets:['Health','Motor','P&C (general excl. motor)','Protection & savings'].map((k,i)=>({label:k.replace(' (general excl. motor)',''),data:mixY.map(y=>at(S[k],y)/at(S.Total,y)*100),backgroundColor:[P3,P2,P,LAV][i]}))},options:baseOpts({scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,min:0,max:100,title:{display:true,text:'%'}}}})});
+  const gY=Y.filter(y=>y>=2017);
+  mk('c_growth',{type:'line',data:{labels:gY,datasets:[{label:'Total',data:gY.map(y=>yoy(S.Total,y)),borderColor:'#1D1A22',backgroundColor:'#1D1A22',borderWidth:3,tension:.2},{label:'Health',data:gY.map(y=>yoy(S.Health,y)),borderColor:P3,backgroundColor:P3,tension:.2},{label:'Motor',data:gY.map(y=>yoy(S.Motor,y)),borderColor:P2,backgroundColor:P2,tension:.2},{label:'P&C',data:gY.map(y=>yoy(S['P&C (general excl. motor)'],y)),borderColor:P,backgroundColor:P,tension:.2}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{title:{display:true,text:'%'}}}})});
+  const lrY=[2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+  mk('c_prof',{type:'line',data:{labels:lrY,datasets:[
+   {label:'Loss ratio, general & health (pre-IFRS 17)',data:lrY.map(y=>at(M.loss_ratio_gh,y)),borderColor:P2,backgroundColor:P2,tension:.2},
+   {label:'Net combined ratio (IFRS 17)',data:lrY.map(y=>at(M.combined_ratio,y)),borderColor:R,backgroundColor:R,tension:.2},
+   {label:'Motor loss / combined',data:lrY.map(y=>{const l=D.lines.Motor;const nep=at(l.nep,y),nci=at(l.nci,y);if(nep)return nci/nep*100;return at(D.ifrs17.Motor.combined,y);}),borderColor:A,backgroundColor:A,borderDash:[6,4],tension:.2},
+   {label:'Health loss / combined',data:lrY.map(y=>{const l=D.lines.Health;const nep=at(l.nep,y),nci=at(l.nci,y);if(nep)return nci/nep*100;return at(D.ifrs17.Health.combined,y);}),borderColor:G,backgroundColor:G,borderDash:[6,4],tension:.2}]},
+   options:baseOpts({scales:{x:{grid:{display:false}},y:{min:60,max:115,title:{display:true,text:'%'}}}})});
+  const niY=[2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+  mk('c_ni',{type:'bar',data:{labels:niY,datasets:[{label:'Net income',data:niY.map(y=>at(M.net_income,y)),backgroundColor:niY.map(y=>(at(M.net_income,y)||0)<0?R:P2)},{label:'Insurance operations result',data:niY.map(y=>at(M.ins_ops_income,y)),backgroundColor:LAV},{label:'Net investment income',type:'line',data:niY.map(y=>at(M.net_investment_income,y)),borderColor:G,backgroundColor:G,tension:.2,spanGaps:true}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,title:{display:true,text:'SAR m'}}}})});
+  const pY=[2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+  mk('c_pen',{type:'line',data:{labels:pY,datasets:[
+   {label:'Penetration of non-oil GDP, %',data:pY.map(y=>at(M.penetration_nonoil,y)),borderColor:P2,backgroundColor:P2,yAxisID:'y',tension:.2},
+   {label:'Penetration of total GDP, %',data:pY.map(y=>at(M.penetration_gdp,y)),borderColor:LAV,backgroundColor:LAV,yAxisID:'y',tension:.2},
+   {label:'Density, SAR per capita',data:pY.map(y=>at(M.density,y)),borderColor:P,backgroundColor:P,yAxisID:'y2',borderDash:[6,4],tension:.2}]},
+   options:baseOpts({scales:{x:{grid:{display:false}},y:{position:'left',min:1,max:3,title:{display:true,text:'%'}},y2:{position:'right',grid:{drawOnChartArea:false},min:800,max:2600,title:{display:true,text:'SAR'}}}})});
+}
+
+// ---------- lines
+const sel=document.getElementById('lineSel');
+LN.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});
+function drawLine(name){
+  const l=D.lines[name]; const ys=yrs(l.gwp);
+  const ret=ys.map(y=>l.nwp[y]/l.gwp[y]*100);
+  const g22=l.gwp[2022], g21=l.gwp[2021], nep=l.nep[2022], nci=l.nci[2022];
+  const lr=nep?nci/nep*100:null; const isPS=name==='Protection & savings';
+  const cagr=(Math.pow(l.gwp[2022]/l.gwp[2016],1/6)-1)*100;
+  document.getElementById('lineNote').textContent = isPS?'Retention and loss ratio are not meaningful for savings business (savings element retained by law).':'';
+  document.getElementById('lineKpis').innerHTML=
+   kpi('SAR '+fmt(g22)+'m','GWP 2022',fmt((g22/g21-1)*100,1)+'% vs 2021 · 6-yr CAGR '+fmt(cagr,1)+'%',(g22>=g21)?'up':'down')+
+   kpi(fmt(g22/S.Total[2022]*100,1)+'%','Share of market GWP 2022',fmt(l.gwp[2016]/S.Total[2016]*100,1)+'% in 2016','flat')+
+   kpi(isPS?'—':fmt(ret[ret.length-1],1)+'%','Retention 2022',isPS?'':fmt(ret[ret.length-1]-ret[ret.length-2],1)+' pts vs 2021','flat')+
+   kpi(isPS?'—':(lr==null?'—':fmt(lr,1)+'%'),'Net loss ratio 2022',isPS?'':'commission '+fmt(l.commissions[2022]/g22*100,1)+'% of GWP',(lr!=null&&lr>85)?'down':'flat');
+  mk('l_gwp',{type:'bar',data:{labels:ys,datasets:[{label:'Gross written',data:ys.map(y=>l.gwp[y]),backgroundColor:P3},{label:'Net written',data:ys.map(y=>l.nwp[y]),backgroundColor:P}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true}}})});
+  mk('l_ret',{type:'line',data:{labels:ys,datasets:[{label:'Retention %',data:ret,borderColor:P2,backgroundColor:P2,tension:.2}]},options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{min:0,max:100}}})});
+  const ly=yrs(l.nep);
+  mk('l_lr',{type:'bar',data:{labels:ly,datasets:[{label:'Net earned premium',data:ly.map(y=>l.nep[y]),backgroundColor:LAV,order:2},{label:'Net claims incurred',data:ly.map(y=>l.nci[y]),backgroundColor:P2,order:2},{label:'Loss ratio %',type:'line',data:ly.map(y=>l.nci[y]/l.nep[y]*100),borderColor:R,backgroundColor:R,yAxisID:'y2',order:1,tension:.2}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true},y2:{position:'right',grid:{drawOnChartArea:false},min:0,max:120,title:{display:true,text:'%'}}}})});
+  mk('l_cl',{type:'bar',data:{labels:ys,datasets:[{label:'Gross claims paid, SAR m',data:ys.map(y=>l.claims_paid[y]),backgroundColor:P3,order:2},{label:'Commission ratio, % of GWP',type:'line',data:ys.map(y=>l.commissions[y]/l.gwp[y]*100),borderColor:A,backgroundColor:A,yAxisID:'y2',order:1,tension:.2}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true},y2:{position:'right',grid:{drawOnChartArea:false},min:0,max:12,title:{display:true,text:'%'}}}})});
+}
+function renderLines(){
+  drawLine(sel.value||LN[0]);
+  const ys=[2016,2017,2018,2019,2020,2021,2022];
+  mk('l_idx',{type:'line',data:{labels:ys,datasets:LN.map((n,i)=>({label:n,data:ys.map(y=>D.lines[n].gwp[y]/D.lines[n].gwp[2016]*100),borderColor:lineColors[i],backgroundColor:lineColors[i],tension:.2,borderWidth:2}))},options:baseOpts({scales:{x:{grid:{display:false}},y:{title:{display:true,text:'2016 = 100'}}}})});
+  const lrl=LN.filter(n=>n!=='Protection & savings');
+  mk('l_lrall',{type:'bar',data:{labels:lrl,datasets:[2019,2020,2021,2022].map((y,i)=>({label:String(y),data:lrl.map(n=>D.lines[n].nci[y]/D.lines[n].nep[y]*100),backgroundColor:[LAV,P,P2,P3][i]}))},options:baseOpts({scales:{x:{grid:{display:false}},y:{min:-10,max:120,title:{display:true,text:'%'}}}})});
+  mk('l_retall',{type:'line',data:{labels:ys,datasets:lrl.map((n,i)=>({label:n,data:ys.map(y=>D.lines[n].nwp[y]/D.lines[n].gwp[y]*100),borderColor:lineColors[i],backgroundColor:lineColors[i],tension:.2,borderWidth:2}))},options:baseOpts({scales:{x:{grid:{display:false}},y:{min:0,max:100,title:{display:true,text:'%'}}}})});
+  mk('l_comall',{type:'line',data:{labels:ys,datasets:LN.map((n,i)=>({label:n,data:ys.map(y=>D.lines[n].commissions[y]/D.lines[n].gwp[y]*100),borderColor:lineColors[i],backgroundColor:lineColors[i],tension:.2,borderWidth:2}))},options:baseOpts({scales:{x:{grid:{display:false}},y:{min:0,max:12,title:{display:true,text:'%'}}}})});
+  // growth heatmap
+  const gy=[2017,2018,2019,2020,2021,2022]; const gh=document.getElementById('growthHeat'); gh.style.gridTemplateColumns='150px repeat('+gy.length+',1fr)';
+  const col=v=>v>=10?[G,'#fff']:v>=0?[GL,'#1D1A22']:v>=-10?[A,'#1D1A22']:[R,'#fff'];
+  let h='<div class="h">Line</div>'+gy.map(y=>`<div class="h">${y}</div>`).join('');
+  [...LN,'Total'].forEach(n=>{const s=n==='Total'?S.Total:D.lines[n].gwp;h+=`<div class="rl">${n}</div>`+gy.map(y=>{const v=(s[y]/s[y-1]-1)*100;const [b,t]=col(v);return `<div style="background:${b};color:${t};font-weight:700">${fmt(v,1)}%</div>`;}).join('');});
+  gh.innerHTML=h;
+  let t='<tr><th>Line</th><th class="num">GWP 2022</th><th class="num">Share</th><th class="num">Growth</th><th class="num">Retention</th><th class="num">Loss ratio</th><th class="num">Claims paid</th><th class="num">Commission %</th><th class="num">6-yr CAGR</th></tr>';
+  LN.forEach(n=>{const l=D.lines[n];const g=l.gwp[2022],g1=l.gwp[2021];const ps=n==='Protection & savings';const lr=ps?null:l.nci[2022]/l.nep[2022]*100;const cg=(Math.pow(g/l.gwp[2016],1/6)-1)*100;
+   t+=`<tr><td><b>${n}</b></td><td class="num">${fmt(g)}</td><td class="num">${fmt(g/S.Total[2022]*100,1)}%</td><td class="num">${fmt((g/g1-1)*100,1)}%</td><td class="num">${ps?'—':fmt(l.nwp[2022]/g*100,1)+'%'}</td><td class="num">${lr==null?'—':fmt(lr,1)+'%'}</td><td class="num">${fmt(l.claims_paid[2022])}</td><td class="num">${fmt(l.commissions[2022]/g*100,1)}%</td><td class="num">${fmt(cg,1)}%</td></tr>`;});
+  t+=`<tr><td><b>Total</b></td><td class="num"><b>${fmt(S.Total[2022])}</b></td><td class="num">100%</td><td class="num">${fmt(yoy(S.Total,2022),1)}%</td><td class="num">${fmt(M.nwp_total[2022]/S.Total[2022]*100,1)}%</td><td class="num">${fmt(M.loss_ratio_gh[2022],1)}%</td><td class="num">${fmt(M.claims_paid_total[2022])}</td><td class="num">${fmt(M.commissions_total[2022]/S.Total[2022]*100,1)}%</td><td class="num">${fmt((Math.pow(S.Total[2022]/S.Total[2016],1/6)-1)*100,1)}%</td></tr>`;
+  document.getElementById('lineTable').innerHTML=t;
+}
+sel.onchange=()=>drawLine(sel.value);
+
+// ---------- motor & health
+function mhChart(id,name,key){
+  const ys=[2016,2017,2018,2019,2020,2021,2022,2023,2024,2025]; const l=D.lines[name], I=D.ifrs17[name];
+  mk(id,{type:'bar',data:{labels:ys,datasets:[
+   {label:'GWP, SAR bn',data:ys.map(y=>at(S[key],y)/1000),backgroundColor:LAV,order:3},
+   {label:'Loss ratio % (to 2022)',type:'line',data:ys.map(y=>{const n=at(l.nep,y);return n?at(l.nci,y)/n*100:null;}),borderColor:P2,backgroundColor:P2,yAxisID:'y2',order:1,tension:.2},
+   {label:'Claims ratio % (IFRS 17)',type:'line',data:ys.map(y=>at(I.claims_ratio,y)),borderColor:A,backgroundColor:A,yAxisID:'y2',order:1},
+   {label:'Combined ratio % (IFRS 17)',type:'line',data:ys.map(y=>at(I.combined,y)),borderColor:R,backgroundColor:R,yAxisID:'y2',order:1}]},
+   options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,title:{display:true,text:'SAR bn'}},y2:{position:'right',grid:{drawOnChartArea:false},min:50,max:115,title:{display:true,text:'%'}}}})});
+}
+function units(el,rows){ document.getElementById(el).innerHTML='<table>'+rows.map((r,i)=>`<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="num">${i?'<b>'+r[2]+'</b>':r[2]}</td><td class="num">${r[3]}</td></tr>`).join('')+'</table>'; }
+function renderMH(){
+  const Mo=D.ifrs17.Motor, He=D.ifrs17.Health;
+  const ppv24=S.Motor[2024]/Mo.vehicles_m[2024], ppv25=S.Motor[2025]/Mo.vehicles_m[2025];
+  const ppl24=S.Health[2024]/He.lives_m[2024], ppl25=S.Health[2025]/He.lives_m[2025];
+  document.getElementById('mhKpis').innerHTML=
+   kpi(fmt(Mo.combined[2025],1)+'%','Motor net combined ratio 2025','+'+fmt(Mo.combined[2025]-Mo.combined[2024],1)+' pts vs 2024','down')+
+   kpi('SAR '+fmt0(ppv25),'Motor premium per vehicle 2025','+'+fmt((ppv25/ppv24-1)*100,1)+'% while claims ratio +'+fmt(Mo.claims_ratio[2025]-Mo.claims_ratio[2024],1)+' pts','down')+
+   kpi(fmt(He.combined[2025],1)+'%','Health net combined ratio 2025','+'+fmt(He.combined[2025]-He.combined[2024],1)+' pts vs 2024','down')+
+   kpi('SAR '+fmt0(ppl25),'Health premium per insured life 2025','+'+fmt((ppl25/ppl24-1)*100,1)+'% · 14.5m lives (+10.7%)','flat');
+  mhChart('m_motor','Motor','Motor'); mhChart('m_health','Health','Health');
+  units('motorUnits',[['','2024','2025','change'],['Gross written premium, SAR bn',fmt(S.Motor[2024]/1000,2),fmt(S.Motor[2025]/1000,2),'+'+fmt(yoy(S.Motor,2025),1)+'%'],['Insured vehicles, m',Mo.vehicles_m[2024],Mo.vehicles_m[2025],'+'+fmt((Mo.vehicles_m[2025]/Mo.vehicles_m[2024]-1)*100,1)+'%'],['Average premium per vehicle, SAR',fmt0(ppv24),fmt0(ppv25),'+'+fmt((ppv25/ppv24-1)*100,1)+'%'],['Claims ratio, %',Mo.claims_ratio[2024],Mo.claims_ratio[2025],'+'+fmt(Mo.claims_ratio[2025]-Mo.claims_ratio[2024],1)+' pts'],['Expense ratio, %',Mo.expense_ratio[2024],Mo.expense_ratio[2025],'+'+fmt(Mo.expense_ratio[2025]-Mo.expense_ratio[2024],1)+' pts'],['Net combined ratio, %',Mo.combined[2024],Mo.combined[2025],'+'+fmt(Mo.combined[2025]-Mo.combined[2024],1)+' pts'],['Retention, %',Mo.retention[2024],Mo.retention[2025],'']]);
+  units('healthUnits',[['','2024','2025','change'],['Gross written premium, SAR bn',fmt(S.Health[2024]/1000,2),fmt(S.Health[2025]/1000,2),'+'+fmt(yoy(S.Health,2025),1)+'%'],['Insured lives, m',He.lives_m[2024],He.lives_m[2025],'+'+fmt((He.lives_m[2025]/He.lives_m[2024]-1)*100,1)+'%'],['Average premium per life, SAR',fmt0(ppl24),fmt0(ppl25),'+'+fmt((ppl25/ppl24-1)*100,1)+'%'],['Claims ratio, %',He.claims_ratio[2024],He.claims_ratio[2025],fmt(He.claims_ratio[2025]-He.claims_ratio[2024],1)+' pts'],['Expense ratio, %',He.expense_ratio[2024],He.expense_ratio[2025],'+'+fmt(He.expense_ratio[2025]-He.expense_ratio[2024],1)+' pts'],['Net combined ratio, %',He.combined[2024],He.combined[2025],'+'+fmt(He.combined[2025]-He.combined[2024],1)+' pts'],['Retention, %',He.retention[2024],He.retention[2025],'']]);
+  const ys=[2016,2017,2018,2019,2020,2021,2022];
+  mk('m_share',{type:'bar',data:{labels:ys,datasets:[{label:'Health',data:ys.map(y=>D.lines.Health.nwp[y]/M.nwp_total[y]*100),backgroundColor:P3},{label:'Motor',data:ys.map(y=>D.lines.Motor.nwp[y]/M.nwp_total[y]*100),backgroundColor:P2},{label:'All other lines',data:ys.map(y=>(1-(D.lines.Health.nwp[y]+D.lines.Motor.nwp[y])/M.nwp_total[y])*100),backgroundColor:LAV}]},options:baseOpts({scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,min:0,max:100,title:{display:true,text:'%'}}}})});
+  mk('m_claims',{type:'line',data:{labels:ys,datasets:[{label:'Health',data:ys.map(y=>D.lines.Health.claims_paid[y]/1000),borderColor:P3,backgroundColor:P3,tension:.2},{label:'Motor',data:ys.map(y=>D.lines.Motor.claims_paid[y]/1000),borderColor:P2,backgroundColor:P2,tension:.2}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,title:{display:true,text:'SAR bn'}}}})});
+  const pc=D.ifrs17.peer_cr_2025; const col=v=>v==null?[NA,'#1D1A22']:v<95?[G,'#fff']:v<=100?[A,'#1D1A22']:v<=110?[R,'#fff']:['#7E1A26','#fff'];
+  let h='<div class="h">Line</div>'+pc.groups.map(g=>`<div class="h">${g}</div>`).join('');
+  ['Health','Motor','P&C','P&S'].forEach(ln=>{h+=`<div class="rl">${ln}</div>`+pc[ln].map(v=>{const [b,t]=col(v);return `<div style="background:${b};color:${t};font-weight:700">${v==null?'–':fmt(v,1)}</div>`;}).join('');});
+  document.getElementById('peerHeat').innerHTML=h;
+}
+
+// ---------- capital
+function renderCapital(){
+  const sb=M.solvency_bands;
+  document.getElementById('capKpis').innerHTML=
+   kpi(M.solvency_avg[2025]+'%','Average solvency margin',(M.solvency_avg[2025]-M.solvency_avg[2024])+' pts vs 2024 · median '+M.solvency_median[2025]+'%','down')+
+   kpi(sb['<100%'][4],'Insurers below 100% coverage 2025','of '+M.insurers[2025]+' reporting · '+sb['100-125%'][4]+' more between 100 and 125%','down')+
+   kpi(M.solvency_by_size.Small[2025]+'%','Small insurers, average margin','large '+M.solvency_by_size.Large[2025]+'% · medium '+M.solvency_by_size.Medium[2025]+'%','flat')+
+   kpi('SAR '+fmt(M.equity[2022]/1000,1)+'bn',"Shareholders' equity 2022",'+'+fmt(yoy(M.equity,2022),1)+'% vs 2021 · reserves SAR '+fmt(M.technical_reserves[2022]/1000,1)+'bn','flat')+
+   kpi(fmt(M.cession_ratio[2025],1)+'%','Premium ceded 2025',fmt(M.ceded_abroad_pct[2025],1)+'% abroad · '+M.facultative_pct[2025]+'% facultative','flat')+
+   kpi('SAR '+fmt(M.ceded[2025]/1000,2)+'bn','Ceded premium 2025','flat vs 2024 as retention rose','flat')+
+   kpi(fmt(M.top8_share[2022],1)+'%','Top-8 share of premium 2022','75.8% in 2020','flat')+
+   kpi(fmt0(M.hhi_lines['P&S'][2025]),'HHI protection & savings 2025','health '+fmt0(M.hhi_lines.Health[2025])+' · motor '+fmt0(M.hhi_lines.Motor[2025]),'down');
+  mk('k_solv',{type:'bar',data:{labels:sb.years,datasets:[{label:'>150%',data:sb['>150%'],backgroundColor:G},{label:'125–150%',data:sb['125-150%'],backgroundColor:GL},{label:'100–125%',data:sb['100-125%'],backgroundColor:A},{label:'<100%',data:sb['<100%'],backgroundColor:R}]},options:baseOpts({scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true}}})});
+  const sz=M.solvency_by_size;
+  mk('k_size',{type:'bar',data:{labels:['Large','Medium','Small','Market average','Market median'],datasets:[{label:'2024',data:[sz.Large[2024],sz.Medium[2024],sz.Small[2024],M.solvency_avg[2024],M.solvency_median[2024]],backgroundColor:LAV},{label:'2025',data:[sz.Large[2025],sz.Medium[2025],sz.Small[2025],M.solvency_avg[2025],M.solvency_median[2025]],backgroundColor:P2}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{min:100,max:180,title:{display:true,text:'%'}}}})});
+  const eqY=[2019,2020,2021,2022];
+  mk('k_eq',{type:'bar',data:{labels:eqY,datasets:[{label:"Shareholders' equity",data:eqY.map(y=>M.equity[y]/1000),backgroundColor:P2},{label:'Technical reserves',data:eqY.map(y=>M.technical_reserves[y]/1000),backgroundColor:LAV},{label:'Total assets',type:'line',data:eqY.map(y=>M.total_assets[y]/1000),borderColor:P3,backgroundColor:P3,tension:.2}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,title:{display:true,text:'SAR bn'}}}})});
+  const roeY=[2019,2020,2021,2022,2023,2024,2025];
+  mk('k_roe',{type:'bar',data:{labels:roeY,datasets:[{label:'ROE %',data:roeY.map(y=>M.net_income[y]/(M.equity[y]||M.equity[2022])*100),backgroundColor:roeY.map(y=>y>2022?LAV:(M.net_income[y]<0?R:P2))}]},options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{title:{display:true,text:'%'}}}})});
+  mk('k_conc',{type:'bar',data:{labels:['Health','Motor','P&C','P&S','Market'],datasets:[{label:'HHI 2024',data:[M.hhi_lines.Health[2024],M.hhi_lines.Motor[2024],M.hhi_lines['P&C'][2024],M.hhi_lines['P&S'][2024],M.hhi_total[2024]],backgroundColor:LAV},{label:'HHI 2025',data:[M.hhi_lines.Health[2025],M.hhi_lines.Motor[2025],M.hhi_lines['P&C'][2025],M.hhi_lines['P&S'][2025],M.hhi_total[2025]],backgroundColor:P2}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,title:{display:true,text:'Herfindahl index'}}}})});
+  const rl=LN.filter(n=>n!=='Protection & savings');
+  mk('k_ret',{type:'bar',data:{labels:rl,datasets:[{label:'Retention 2022, %',data:rl.map(n=>D.lines[n].nwp[2022]/D.lines[n].gwp[2022]*100),backgroundColor:rl.map(n=>{const r=D.lines[n].nwp[2022]/D.lines[n].gwp[2022]*100;return r>80?P3:r>30?P2:P;})}]},options:baseOpts({indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:0,max:100},y:{grid:{display:false}}}})});
+  const fy=yrs(M.facultative_pct);
+  mk('k_fac',{type:'line',data:{labels:fy,datasets:[{label:'Facultative share of cessions, %',data:fy.map(y=>M.facultative_pct[y]),borderColor:P2,backgroundColor:P2,tension:.2}]},options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{min:50,max:75}}})});
+  mk('k_top8',{type:'bar',data:{labels:M.top8_2022.labels,datasets:[{label:'GWP 2022, SAR m',data:M.top8_2022.gwp,backgroundColor:M.top8_2022.labels.map((l,i)=>i<8?P2:NA)}]},options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true}}})});
+}
+
+// ---------- structure
+function renderStructure(){
+  const ch=M.channels, cl=M.clients, rg=M.regions;
+  document.getElementById('stKpis').innerHTML=
+   kpi(fmt(ch.Broker[3],1)+'%','Premium sold through brokers 2022','34.2% in 2019 · top 10 brokers write 73% of brokered premium','flat')+
+   kpi(fmt(M.online_share[2022],1)+'%','Online sales share 2022','6.9% in 2020','up')+
+   kpi(fmt(cl.Large[3],1)+'%','Premium from large enterprises 2022','retail '+fmt(cl.Retail[3],1)+'% · SMEs '+fmt(cl.Micro[3]+cl.Small[3]+cl.Medium[3],1)+'%','flat')+
+   kpi(fmt(rg.Central[3],0)+'%','Premium from the Central region 2022','Western '+fmt(rg.Western[3],0)+'% · Eastern '+fmt(rg.Eastern[3],0)+'%','flat')+
+   kpi(fmt0(M.employees[2022]),'Insurance-company employees 2022','Saudization '+M.saudization[2022]+'% (74% in 2019)','flat')+
+   kpi('SAR '+fmt0(M.density_seg.Health[6]),'Health spend per capita 2022','+'+fmt((M.density_seg.Health[6]/M.density_seg.Health[0]-1)*100,0)+'% since 2016','up')+
+   kpi(M.brokers_2022.count,'Licensed brokers 2022','brokered premium SAR '+fmt(M.brokers_2022.total_gwp/1000,1)+'bn','flat')+
+   kpi('12.4','Motor complaints per 10k policies 2025','health 9.0 · general 6.4','down');
+  mk('s_chan',{type:'bar',data:{labels:ch.years,datasets:[{label:'Direct (insurer)',data:ch['Direct (insurer)'],backgroundColor:P3},{label:'Broker',data:ch.Broker,backgroundColor:P},{label:'Agent',data:ch.Agent,backgroundColor:LAV}]},options:baseOpts({scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,min:0,max:100,title:{display:true,text:'%'}}}})});
+  mk('s_cli',{type:'bar',data:{labels:cl.years,datasets:[{label:'Large enterprises',data:cl.Large,backgroundColor:P3},{label:'Medium',data:cl.Medium,backgroundColor:P2},{label:'Small',data:cl.Small,backgroundColor:P},{label:'Micro',data:cl.Micro,backgroundColor:LAV},{label:'Retail',data:cl.Retail,backgroundColor:G}]},options:baseOpts({scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,min:0,max:100,title:{display:true,text:'%'}}}})});
+  mk('s_reg',{type:'bar',data:{labels:rg.years,datasets:[{label:'Central',data:rg.Central,backgroundColor:P3},{label:'Western',data:rg.Western,backgroundColor:P2},{label:'Eastern',data:rg.Eastern,backgroundColor:P},{label:'Other',data:rg.Other,backgroundColor:LAV}]},options:baseOpts({scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,min:0,max:100,title:{display:true,text:'%'}}}})});
+  const ey=yrs(M.employees);
+  mk('s_emp',{type:'bar',data:{labels:ey,datasets:[{label:'Employees',data:ey.map(y=>M.employees[y]),backgroundColor:LAV,order:2},{label:'Saudization %',type:'line',data:ey.map(y=>M.saudization[y]),borderColor:P2,backgroundColor:P2,yAxisID:'y2',order:1,tension:.2}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true},y2:{position:'right',grid:{drawOnChartArea:false},min:60,max:90,title:{display:true,text:'%'}}}})});
+  const ds=M.density_seg;
+  mk('s_den',{type:'line',data:{labels:ds.years,datasets:[{label:'Health',data:ds.Health,borderColor:P3,backgroundColor:P3,tension:.2},{label:'General',data:ds.General,borderColor:P2,backgroundColor:P2,tension:.2},{label:'P&S',data:ds['P&S'],borderColor:P,backgroundColor:P,tension:.2}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,title:{display:true,text:'SAR'}}}})});
+  const cd=M.complaints_2025.density_per_10k;
+  mk('s_comp',{type:'bar',data:{labels:Object.keys(cd),datasets:[{label:'Complaints per 10,000 policies',data:Object.values(cd),backgroundColor:[R,A,P2]}]},options:baseOpts({indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true},y:{grid:{display:false}}}})});
+}
+
+// ---------- signals
+function renderSignals(){
+  const sig=[]; const add=(lens,name,value,status,why,src)=>sig.push({lens,name,value,status,why,src});
+  const gT=yoy(S.Total,2025), gM=yoy(S.Motor,2025);
+  add('Growth','Market premium growth',fmt(gT,1)+'%',gT>20?'a':gT<0?'r':'g','Cut-offs: amber above 20% or below 0%, red below −5%. Within the sound range after two years above 20%.','IA 2025 p.12');
+  add('Growth','Motor premium growth vs vehicles',fmt(gM,1)+'% vs +6.8% vehicles','a','Premium per vehicle up only ≈5% while the claims ratio rose 13.6 pts: price is lagging cost.','IA 2025 p.19');
+  add('Growth','Protection & savings growth',fmt(yoy(S['Protection & savings'],2025),1)+'%','a','×4 since 2022 to SAR 8.2bn: growth this fast in a long-duration line calls for ALM and lapse monitoring.','IA 2025 p.12');
+  add('Growth','Penetration of non-oil GDP',fmt(M.penetration_nonoil[2025],2)+'%','a','Down 0.34 pts: premium grew slower than the non-oil economy.','IA 2025 p.46');
+  add('Growth','Concentration (HHI)',fmt0(M.hhi_total[2025]),'a','Up 5.3% in a year; health 3,207 and P&S 6,257 are highly concentrated.','IA 2025 p.44');
+  add('Profitability','Net combined ratio, market',fmt(M.combined_ratio[2025],1)+'%','a','Published bands: green <95, amber 95–100, red >100. At the edge of the amber band.','IA 2025 p.16');
+  add('Profitability','Net combined ratio, motor',fmt(D.ifrs17.Motor.combined[2025],1)+'%','r','Red above 100%; +20.1 pts in one year. Every peer group except leaders and reinsurers is loss-making on motor.','IA 2025 p.17, 19');
+  add('Profitability','Net combined ratio, health',fmt(D.ifrs17.Health.combined[2025],1)+'%','a','Amber band; +1.4 pts with expense ratio rising faster than claims.','IA 2025 p.23');
+  add('Profitability','Health premium per life vs claims ratio','+2.1% / 83.0%','a','Premium per life barely moved while medical costs kept rising: the re-pricing lag the Authority names.','IA 2025 p.23');
+  add('Profitability','Expense ratio, market',fmt(M.expense_ratio[2025],1)+'%','a','+2.4 pts year on year; commissions and acquisition costs rising with competition.','IA 2025 p.16');
+  add('Profitability','Net income',fmt(yoy(M.net_income,2025),0)+'%','a','Halved from 2024 as investment income fell 35% and underwriting margin thinned.','IA 2025 p.16');
+  add('Sustainability','Average solvency margin',M.solvency_avg[2025]+'%','a','Amber below 160% or on a 10-point fall; required capital +8.5% while available capital −1.5%.','IA 2025 p.33–34');
+  add('Sustainability','Insurers below 100% coverage',M.solvency_bands['<100%'][4]+' of '+M.insurers[2025],'r','Any insurer below the minimum is a red at entity level; six more sit between 100% and 125% ahead of RBC 2027.','IA 2025 p.33 (chart)');
+  add('Sustainability','Small insurers, average margin',M.solvency_by_size.Small[2025]+'%','a','Stable year on year but 30 points below the market average.','IA 2025 p.33');
+  add('Sustainability','Cessions placed abroad',fmt(M.ceded_abroad_pct[2025],1)+'%','a','Down from 88.6% with the local cession rule, still four-fifths of ceded premium; 63% facultative.','IA 2025 p.39–41');
+  add('Sustainability','Marine retention 2022',fmt(D.lines.Marine.nwp[2022]/D.lines.Marine.gwp[2022]*100,1)+'%','a','Seven-tenths of marine risk depends on reinsurance capacity, which geopolitics can withdraw.','SAMA/IA 2022 table 7');
+  add('Beneficiary protection','Complaints, January to December 2025','26k → 44k per month','r','+70% within the year and 76% about claims; red on an in-year rise above 50%.','IA 2025 p.48');
+  add('Beneficiary protection','Motor complaint density','12.4 per 10,000 policies','a','Highest of all lines, on the line where underwriting turned loss-making.','IA 2025 p.48');
+  add('Beneficiary protection','Broker share of premium',fmt(M.channels.Broker[3],1)+'%','g','Rising intermediation is a conduct exposure to watch, not a breach: top 10 brokers write 73% of brokered premium.','SAMA/IA 2022 p.18, 40');
+  const counts={g:0,a:0,r:0}; sig.forEach(s=>counts[s.status]++);
+  document.getElementById('sigKpis').innerHTML=`<div class="card kpi"><div class="v" style="color:var(--g)">${counts.g}</div><div class="l">Green</div></div><div class="card kpi"><div class="v" style="color:var(--a)">${counts.a}</div><div class="l">Amber</div></div><div class="card kpi"><div class="v" style="color:var(--r)">${counts.r}</div><div class="l">Red</div></div>`;
+  document.getElementById('sigTable').innerHTML='<tr><th>Lens</th><th>Indicator</th><th class="num">2025</th><th>Status</th><th>Why</th><th>Source</th></tr>'+sig.map(s=>`<tr><td>${s.lens}</td><td><b>${s.name}</b></td><td class="num">${s.value}</td><td><span class="pill ${s.status}">${s.status==='g'?'Green':s.status==='a'?'Amber':'Red'}</span></td><td>${s.why}</td><td class="note">${s.src}</td></tr>`).join('');
+  const byName={}; sig.forEach(s=>byName[s.name]=s);
+  document.getElementById('watch').innerHTML=M.watchlist_2026.map((w,i)=>`<div class="card"><b>${i+1}. ${w.item}</b>${w.indicators.map(n=>{const s=byName[n];return s?`<span><span class="pill ${s.status}" style="font-size:11px">${s.status==='g'?'G':s.status==='a'?'A':'R'}</span> ${n}: ${s.value}</span>`:`<span>${n}</span>`;}).join('')}</div>`).join('');
+}
+
+// ---------- data
+function renderData(){
+  document.getElementById('srcTable').innerHTML='<tr><th>Source</th><th>Covers</th><th>Pages</th></tr>'+D.sources.map(s=>`<tr><td><b>${s.name}</b></td><td>${s.covers}</td><td>${s.pages}</td></tr>`).join('');
+  document.getElementById('notes').innerHTML=D.notes.map(n=>`<li>${n}</li>`).join('');
+  const segs=Object.keys(S);const ys=[2014,...D.years];let h='<tr><th>Segment</th>'+ys.map(y=>`<th class="num">${y}</th>`).join('')+'</tr>';segs.forEach(sg=>{h+=`<tr><td><b>${sg}</b></td>`+ys.map(y=>`<td class="num">${at(S[sg],y)==null?'—':fmt0(at(S[sg],y))}</td>`).join('')+'</tr>';});document.getElementById('segTable').innerHTML=h;
+  document.getElementById('json').value=JSON.stringify(D,null,1);
+}
+
+// ---------- ACTUARIAL TWIN
+const TW={
+ base:{ seg:{
+   'Health':{gwp:47750,ret:0.985,cl:83.0,ex:12.7,units:14.5,unit:'insured lives (m)',src:'IA 2025 p.23'},
+   'Motor':{gwp:15590,ret:0.991,cl:84.0,ex:22.3,units:11.0,unit:'insured vehicles (m)',src:'IA 2025 p.19'},
+   'P&C':{gwp:12780,ret:0.27,cl:58,ex:37,src:'assumed: retention from 2022 line data; CR 95% mid of peer-group range'},
+   'P&S':{gwp:8160,ret:0.64,cl:80,ex:16,src:'assumed: retention 2022; CR 96% within peer-group range 82–101%'}},
+   inv:2240, ni:1900, solv:1.56, insurers:25, bands:[12,5,6,2] },
+ ctl:[
+  ['motor','motor_rate','Average premium per vehicle change',-15,15,0.5,0,'%'],
+  ['motor','motor_cost','Claims cost per vehicle inflation (parts, labour, repair time)',-5,30,0.5,0,'%'],
+  ['motor','motor_vol','Insured vehicles growth',0,12,0.5,5,'%'],
+  ['health','health_price','Premium per insured life change (re-pricing)',-5,15,0.5,0,'%'],
+  ['health','health_cost','Medical claims cost per life inflation',0,25,0.5,0,'%'],
+  ['health','health_vol','Insured lives growth',0,12,0.5,7,'%'],
+  ['pc','pc_growth','P&C gross premium growth',-10,25,0.5,8,'%'],
+  ['pc','pc_ret','Capacity withdrawal: retention shift (marine, property, energy)',0,30,1,0,' pts'],
+  ['pc','pc_claims','P&C net claims ratio shift',-10,25,0.5,0,' pts'],
+  ['pc','cat_loss','Catastrophe or large loss, net of reinsurance',0,3000,50,0,' SAR m'],
+  ['other','ps_growth','Protection & savings growth',-10,40,1,6,'%'],
+  ['other','ps_cr','Protection & savings combined ratio shift',-10,10,0.5,0,' pts'],
+  ['other','exp_delta','Expense ratio shift, all lines',-3,6,0.1,0,' pts'],
+  ['other','inv_delta','Net investment income change',-60,40,1,0,'%'],
+  ['cap','rbc','Required capital uplift on RBC transition',0,40,1,0,'%'],
+  ['cap','payout','Dividend payout of positive net income',0,80,5,40,'%'],
+  ['cap','inject','Capital injections across the market',0,3000,100,0,' SAR m'],
+  ['cap','avail','Available capital base FY2025 (assumption)',15000,35000,500,25000,' SAR m']],
+ presets:{
+  'Flat 2025 ratios':{},
+  'Cost drift, no re-pricing':{motor_cost:5,health_cost:8,health_price:4},
+  'Motor softening':{motor_rate:-5,motor_cost:8,motor_vol:5},
+  'Medical inflation':{health_cost:12,health_price:3},
+  'Marine & war capacity shock':{pc_ret:15,pc_claims:5,cat_loss:400},
+  'RBC transition':{rbc:20},
+  'Investment shock':{inv_delta:-40},
+  'Hard-market recovery':{motor_rate:10,motor_cost:5,health_price:9,health_cost:7},
+  'Combined stress':{motor_rate:-5,motor_cost:8,health_cost:12,health_price:3,pc_ret:15,cat_loss:400,inv_delta:-25,rbc:20}}
+};
+const tv={}; TW.ctl.forEach(c=>tv[c[1]]=c[6]);
+function buildCtls(){
+  const groups={motor:'ctl_motor',health:'ctl_health',pc:'ctl_pc',other:'ctl_other',cap:'ctl_cap'};
+  Object.values(groups).forEach(id=>document.getElementById(id).innerHTML='');
+  TW.ctl.forEach(([g,id,label,min,max,step,def,unit])=>{
+    const w=document.createElement('div');w.className='ctl';
+    w.innerHTML=`<label><span>${label}</span><b id="v_${id}">${def}${unit}</b></label><input type="range" id="in_${id}" min="${min}" max="${max}" step="${step}" value="${def}">`;
+    document.getElementById(groups[g]).appendChild(w);
+    w.querySelector('input').oninput=(e)=>{tv[id]=parseFloat(e.target.value);document.getElementById('v_'+id).textContent=tv[id]+unit;markPreset(null);runTwin();};
+  });
+  const pr=document.getElementById('presets');pr.innerHTML='';
+  Object.keys(TW.presets).forEach((name,i)=>{const b=document.createElement('button');b.textContent=name;if(i===0)b.classList.add('on');b.onclick=()=>applyPreset(name);pr.appendChild(b);});
+}
+function markPreset(name){document.querySelectorAll('#presets button').forEach(b=>b.classList.toggle('on',b.textContent===name));}
+function applyPreset(name){TW.ctl.forEach(c=>{tv[c[1]]=c[6];});Object.assign(tv,TW.presets[name]);TW.ctl.forEach(([g,id,l,mn,mx,st,def,unit])=>{const el=document.getElementById('in_'+id);if(el){el.value=tv[id];document.getElementById('v_'+id).textContent=tv[id]+unit;}});markPreset(name);runTwin();}
+// synthetic insurers (deterministic)
+function synthInsurers(){
+  const shares=[14350,13897,3470,2855,2642,1567,1403,1177,...Array(17).fill(11996/17)]; const tot=shares.reduce((a,b)=>a+b,0);
+  const groups=['Leaders','Leaders','Diversified','Motor focus','Health focus','Commercial','Diversified','Motor focus','Reinsurer','Health focus','Motor focus','Commercial','Diversified','Motor focus','Health focus','Commercial','Motor focus','Diversified','Reinsurer','Commercial','Health focus','Motor focus','Diversified','Commercial','Motor focus'];
+  const mix={'Leaders':{Health:.60,Motor:.20,'P&C':.15,'P&S':.05},'Health focus':{Health:.85,Motor:.10,'P&C':.05,'P&S':0},'Motor focus':{Health:.15,Motor:.70,'P&C':.15,'P&S':0},'Commercial':{Health:.25,Motor:.15,'P&C':.55,'P&S':.05},'Diversified':{Health:.45,Motor:.25,'P&C':.20,'P&S':.10},'Reinsurer':{Health:.20,Motor:.10,'P&C':.60,'P&S':.10}};
+  // solvency by band: assign larger insurers to higher bands, with a deterministic spread
+  const bandVals=[...Array(12).fill(0).map((_,i)=>150+18*(i+1)),...Array(5).fill(0).map((_,i)=>150-5*(i+1)),...Array(6).fill(0).map((_,i)=>125-4*(i+1)),96,88];
+  return shares.map((s,i)=>({id:i+1,share:s/tot,group:groups[i],mix:mix[groups[i]],solv:bandVals[i]/100}));
+}
+const INS=synthInsurers();
+function segProject(v){
+  const B=TW.base.seg, out={};
+  for(const k of Object.keys(B)){const b=B[k];const nep0=b.gwp*b.ret;const cl0=nep0*b.cl/100;const ex0=nep0*b.ex/100;let nep1,cl1,ex1;
+    if(k==='Motor'){nep1=nep0*(1+v.motor_vol/100)*(1+v.motor_rate/100);cl1=cl0*(1+v.motor_vol/100)*(1+v.motor_cost/100);ex1=nep1*(b.ex+v.exp_delta)/100;}
+    else if(k==='Health'){nep1=nep0*(1+v.health_vol/100)*(1+v.health_price/100);cl1=cl0*(1+v.health_vol/100)*(1+v.health_cost/100);ex1=nep1*(b.ex+v.exp_delta)/100;}
+    else if(k==='P&C'){const ret1=Math.min(0.95,b.ret+v.pc_ret/100);nep1=b.gwp*(1+v.pc_growth/100)*ret1;cl1=nep1*(b.cl+v.pc_claims)/100+v.cat_loss;ex1=nep1*(b.ex+v.exp_delta)/100;}
+    else {nep1=nep0*(1+v.ps_growth/100);cl1=nep1*(b.cl+v.ps_cr)/100;ex1=nep1*(b.ex+v.exp_delta)/100;}
+    out[k]={nep0,cl0,ex0,uw0:nep0-cl0-ex0,cr0:(cl0+ex0)/nep0*100,nep1,cl1,ex1,uw1:nep1-cl1-ex1,cr1:(cl1+ex1)/nep1*100};}
+  const sum=(f)=>Object.values(out).reduce((a,o)=>a+o[f],0);
+  const m={nep0:sum('nep0'),nep1:sum('nep1'),cl0:sum('cl0'),cl1:sum('cl1'),ex0:sum('ex0'),ex1:sum('ex1')};
+  m.cr0=(m.cl0+m.ex0)/m.nep0*100; m.cr1=(m.cl1+m.ex1)/m.nep1*100; m.uw0=m.nep0-m.cl0-m.ex0; m.uw1=m.nep1-m.cl1-m.ex1; m.dUW=m.uw1-m.uw0;
+  const inv1=TW.base.inv*(1+v.inv_delta/100); m.dInv=inv1-TW.base.inv; m.ni1=TW.base.ni+m.dUW+m.dInv;
+  const avail=v.avail, req0=avail/TW.base.solv, req1=req0*(m.nep1/m.nep0)*(1+v.rbc/100);
+  const retained=m.ni1>0?m.ni1*(1-v.payout/100):m.ni1; const avail1=avail+retained+v.inject; m.solv1=avail1/req1; m.req1=req1; m.avail1=avail1;
+  // insurer distribution
+  const reqRate=req0/m.nep0; const bands1=[0,0,0,0];
+  m.ins=INS.map(ins=>{const nep_i=ins.share*m.nep0;const req_i=nep_i*reqRate;const avail_i=ins.solv*req_i;let dUW=0,g=0;for(const k of Object.keys(out)){const o=out[k];const w=ins.mix[k];const seg_nep_i=nep_i*w;const m0=o.uw0/o.nep0,m1=(o.uw1-(k==='P&C'?v.cat_loss:0))/o.nep1;dUW+=seg_nep_i*(m1*(o.nep1/o.nep0)-m0);g+=w*(o.nep1/o.nep0);}
+    dUW-=v.cat_loss*(ins.mix['P&C']*nep_i)/(TW.base.seg['P&C'].gwp*Math.min(0.95,TW.base.seg['P&C'].ret+v.pc_ret/100))*1.0; // cat allocated by P&C net premium share
+    const ret_i=dUW>0?dUW*(1-v.payout/100):dUW; const req1_i=req_i*g*(1+v.rbc/100); const s1=(avail_i+ret_i+v.inject*ins.share)/req1_i;
+    const b=s1>1.5?0:s1>1.25?1:s1>1?2:3; bands1[b]++; return {...ins,s1,nep_i};});
+  m.bands1=bands1; m.seg=out; return m;
+}
+function gauss(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function monteCarlo(v,n=2000){
+  const res=[];const sd={motor_cost:5,motor_rate:3,health_cost:3,health_price:2,pc_claims:5,inv_delta:15,exp_delta:0.7};
+  for(let i=0;i<n;i++){const w={...v};for(const k in sd)w[k]=v[k]+gauss()*sd[k];if(Math.random()<0.3)w.cat_loss=v.cat_loss+Math.exp(5+0.8*gauss());const m=segProject(w);res.push({cr:m.cr1,ni:m.ni1,solv:m.solv1});}
+  const ni=res.map(r=>r.ni).sort((a,b)=>a-b);const pct=p=>ni[Math.floor(p*(n-1))];
+  return {pCR:res.filter(r=>r.cr>100).length/n*100,pNI:res.filter(r=>r.ni<0).length/n*100,pS:res.filter(r=>r.solv<1.25).length/n*100,p5:pct(.05),p50:pct(.5),p95:pct(.95),ni};
+}
+function runTwin(){
+  const v={...tv}; const m=segProject(v); const mc=monteCarlo(v);
+  const d=(a,b,dec=1)=>{const x=a-b;return (x>=0?'+':'')+fmt(x,dec);};
+  const bands0=TW.base.bands;
+  document.getElementById('t_kpis').innerHTML=
+   kpi(fmt(m.cr1,1)+'%','Market net combined ratio FY2026 (modelled)',d(m.cr1,m.cr0)+' pts vs modelled baseline '+fmt(m.cr0,1)+'%',m.cr1>m.cr0?'down':'up')+
+   kpi(fmt(m.seg.Motor.cr1,1)+'%','Motor combined ratio',d(m.seg.Motor.cr1,m.seg.Motor.cr0)+' pts',m.seg.Motor.cr1>m.seg.Motor.cr0?'down':'up')+
+   kpi(fmt(m.seg.Health.cr1,1)+'%','Health combined ratio',d(m.seg.Health.cr1,m.seg.Health.cr0)+' pts',m.seg.Health.cr1>m.seg.Health.cr0?'down':'up')+
+   kpi('SAR '+fmt0(m.dUW)+'m','Change in underwriting result','net earned premium '+d(m.nep1/m.nep0*100-100,0,1)+'%',m.dUW>=0?'up':'down')+
+   kpi('SAR '+fmt0(m.ni1)+'m','Net income FY2026 (modelled)',d(m.ni1,TW.base.ni,0)+' vs FY2025 · investment '+(m.dInv>=0?'+':'')+fmt0(m.dInv),m.ni1>=TW.base.ni?'up':'down')+
+   kpi(fmt(m.solv1*100,0)+'%','Average solvency margin FY2026',d(m.solv1*100,TW.base.solv*100,0)+' pts vs 156%',m.solv1>=TW.base.solv?'up':'down')+
+   kpi(m.bands1[3]+' / '+(m.bands1[2]+m.bands1[3]),'Insurers below 100% / below 125%','baseline '+bands0[3]+' / '+(bands0[2]+bands0[3])+' of 25 (synthetic)',m.bands1[3]>bands0[3]?'down':'flat')+
+   kpi(fmt(mc.pCR,0)+'%','Probability market CR > 100%','P(net loss) '+fmt(mc.pNI,0)+'% · P(solvency < 125%) '+fmt(mc.pS,0)+'% · net income p5/p50/p95: '+fmt0(mc.p5)+' / '+fmt0(mc.p50)+' / '+fmt0(mc.p95),mc.pCR>50?'down':'flat');
+  const segs=['Health','Motor','P&C','P&S'];
+  mk('t_cr',{type:'bar',data:{labels:[...segs,'Market'],datasets:[{label:'FY2025 baseline',data:[...segs.map(k=>m.seg[k].cr0),m.cr0],backgroundColor:LAV},{label:'FY2026 scenario',data:[...segs.map(k=>m.seg[k].cr1),m.cr1],backgroundColor:segs.map(k=>m.seg[k].cr1>100?R:P2).concat([m.cr1>100?R:P2])}]},options:baseOpts({scales:{x:{grid:{display:false}},y:{min:60,max:130,title:{display:true,text:'%'}}},plugins:{legend:{position:'bottom'},annotation:{}}})});
+  // bridge (floating bars)
+  const steps=[['FY2025 net income',0,TW.base.ni]];let cur=TW.base.ni;
+  const seguw=segs.map(k=>[k+' underwriting',m.seg[k].uw1-m.seg[k].uw0-(k==='P&C'?v.cat_loss:0)]);
+  seguw.push(['Catastrophe loss',-v.cat_loss]);seguw.push(['Investment income',m.dInv]);
+  seguw.forEach(([l,x])=>{steps.push([l,cur,cur+x]);cur+=x;});steps.push(['FY2026 net income',0,cur]);
+  mk('t_bridge',{type:'bar',data:{labels:steps.map(s=>s[0]),datasets:[{label:'SAR m',data:steps.map(s=>[s[1],s[2]]),backgroundColor:steps.map((s,i)=>i===0||i===steps.length-1?P3:(s[2]>=s[1]?G:R))}]},options:baseOpts({plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>{const [a,b]=c.raw;return (c.dataIndex===0||c.dataIndex===steps.length-1)?'SAR '+fmt0(b)+'m':(b-a>=0?'+':'')+fmt0(b-a)+' SAR m';}}}},scales:{x:{grid:{display:false}},y:{title:{display:true,text:'SAR m'}}}})});
+  mk('t_solv',{type:'bar',data:{labels:['Baseline FY2025','Scenario FY2026'],datasets:[{label:'>150%',data:[bands0[0],m.bands1[0]],backgroundColor:G},{label:'125–150%',data:[bands0[1],m.bands1[1]],backgroundColor:GL},{label:'100–125%',data:[bands0[2],m.bands1[2]],backgroundColor:A},{label:'<100%',data:[bands0[3],m.bands1[3]],backgroundColor:R}]},options:baseOpts({indexAxis:'y',scales:{x:{stacked:true,beginAtZero:true,max:25},y:{stacked:true,grid:{display:false}}}})});
+  // MC histogram
+  const ni=mc.ni;const lo=ni[0],hi=ni[ni.length-1];const nb=24;const w=(hi-lo)/nb||1;const bins=Array(nb).fill(0);ni.forEach(x=>{let b=Math.floor((x-lo)/w);if(b>=nb)b=nb-1;bins[b]++;});
+  const labels=bins.map((_,i)=>fmt0(lo+i*w));
+  mk('t_mc',{type:'bar',data:{labels,datasets:[{label:'Draws',data:bins,backgroundColor:labels.map(l=>parseFloat(l.replace(/,/g,''))<0?R:P2)}]},options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{beginAtZero:true}}})});
+  // narrative
+  const worst=segs.map(k=>[k,m.seg[k].cr1-m.seg[k].cr0]).sort((a,b)=>b[1]-a[1])[0];
+  const n=[];
+  n.push(`Under this scenario the market combined ratio moves from ${fmt(m.cr0,1)}% to <b>${fmt(m.cr1,1)}%</b> (${d(m.cr1,m.cr0)} pts); the largest deterioration is in <b>${worst[0]}</b> (${d(worst[1],0)} pts).`);
+  n.push(`The underwriting result changes by <b>SAR ${fmt0(m.dUW)}m</b>${v.cat_loss?` including a SAR ${fmt0(v.cat_loss)}m net catastrophe loss`:''}; with investment income ${m.dInv>=0?'up':'down'} SAR ${fmt0(Math.abs(m.dInv))}m, net income lands at <b>SAR ${fmt0(m.ni1)}m</b> against SAR 1,900m in 2025.`);
+  n.push(`Average solvency moves to <b>${fmt(m.solv1*100,0)}%</b>${v.rbc?` with required capital lifted ${v.rbc}% for RBC`:''}; in the synthetic distribution <b>${m.bands1[3]}</b> insurers fall below 100% and <b>${m.bands1[2]+m.bands1[3]}</b> below 125% (baseline ${bands0[3]} and ${bands0[2]+bands0[3]}).`);
+  n.push(`Across 2,000 draws the probability of a market combined ratio above 100% is <b>${fmt(mc.pCR,0)}%</b>, of a sector net loss <b>${fmt(mc.pNI,0)}%</b>, and of average solvency below 125% <b>${fmt(mc.pS,0)}%</b>.`);
+  n.push(`<span class="note">Supervisory reading: ${m.seg.Motor.cr1>100?'motor stays loss-making — pricing-adequacy dialogue with motor-focused writers first':'motor returns to underwriting profit'}; ${m.bands1[3]>bands0[3]?'capital plans should be requested before the RBC switch from the insurers moving below 100%':'capital buffers hold at the minimum, but the 100–125% band is where attention belongs'}.</span>`);
+  document.getElementById('t_narr').innerHTML=n.map(x=>`<p style="margin:0 0 8px">${x}</p>`).join('');
+  // diagnostic
+  const cl24=70.4,cl25=84.0,ppv=(15590/11.0)/(13890/10.3)-1,vol=11.0/10.3-1; const impliedCost=(cl25/cl24)*(1+ppv)-1;
+  const hcl24=83.1,hcl25=83.0,ppl=(47750/14.5)/(42250/13.1)-1; const impliedMed=(hcl25/hcl24)*(1+ppl)-1;
+  const breakevenX=cl25/(100-22.3)-1; // premium uplift for CR=100% with expenses scaling with premium
+  document.getElementById('t_diag').innerHTML=`<table>
+   <tr><th>Motor 2024 → 2025</th><th class="num">value</th></tr>
+   <tr><td>Average premium per vehicle change</td><td class="num">${fmt(ppv*100,1)}%</td></tr>
+   <tr><td>Insured vehicles growth</td><td class="num">${fmt(vol*100,1)}%</td></tr>
+   <tr><td>Claims ratio 70.4% → 84.0%: implied claims cost per vehicle inflation</td><td class="num"><b>${fmt(impliedCost*100,1)}%</b></td></tr>
+   <tr><td>Premium uplift needed in 2026 to bring motor back to a 100% combined ratio at constant claims cost (expenses scaling with premium)</td><td class="num"><b>+${fmt(breakevenX*100,1)}%</b></td></tr>
+   <tr><th>Health 2024 → 2025</th><th class="num"></th></tr>
+   <tr><td>Average premium per insured life change</td><td class="num">${fmt(ppl*100,1)}%</td></tr>
+   <tr><td>Claims ratio 83.1% → 83.0%: implied medical cost per life inflation</td><td class="num"><b>${fmt(impliedMed*100,1)}%</b></td></tr>
+   <tr><td>Expense ratio 11.1% → 12.7%: margin lost to acquisition and admin</td><td class="num">1.6 pts</td></tr></table>`;
+  // assumptions
+  const B=TW.base.seg;
+  document.getElementById('t_assump').innerHTML='<tr><th>Assumption</th><th class="num">Value</th><th>Basis</th></tr>'+
+   Object.keys(B).map(k=>`<tr><td>${k}: GWP · retention · claims ratio · expense ratio</td><td class="num">${fmt0(B[k].gwp)} · ${fmt(B[k].ret*100,1)}% · ${B[k].cl}% · ${B[k].ex}%</td><td>${B[k].src}</td></tr>`).join('')+
+   `<tr><td>Net earned premium</td><td class="num">GWP × retention</td><td>Written used as proxy for earned; IFRS 17 revenue differs — modelled market CR ${fmt(m.cr0,1)}% vs published 99.9%</td></tr>
+    <tr><td>Investment income · net income FY2025</td><td class="num">2,240 · 1,900</td><td>IA 2025 p.16; net income projected as FY2025 plus deltas (zakat, tax, other held constant)</td></tr>
+    <tr><td>Available capital FY2025 · solvency</td><td class="num">${fmt0(v.avail)} · 156%</td><td>Capital base assumed (equity SAR 19.9bn in 2022 plus retained earnings); solvency IA 2025 p.33</td></tr>
+    <tr><td>Required capital growth</td><td class="num">∝ net premium growth × (1 + RBC uplift)</td><td>Simplification of a premium-driven capital charge</td></tr>
+    <tr><td>Synthetic insurers</td><td class="num">25</td><td>Sizes from 2022 company distribution; peer groups and line mixes assumed; solvency assigned to the 2025 band counts 12 / 5 / 6 / 2</td></tr>
+    <tr><td>Monte Carlo standard deviations</td><td class="num">motor cost 5 · rate 3 · medical cost 3 · health price 2 · P&C claims 5 · investment 15 · expenses 0.7</td><td>Judgement; catastrophe events 30% probability, lognormal severity</td></tr>`;
+}
+function renderTwin(){ buildCtls(); runTwin(); }
+
+let twinBuilt=false;
+function renderAll(){ palette(); renderOverview(); renderLines(); renderMH(); renderCapital(); renderStructure(); renderSignals(); renderData(); if(!twinBuilt){renderTwin();twinBuilt=true;} else runTwin(); }
+renderAll();
+</script>
+</body>
+</html>
