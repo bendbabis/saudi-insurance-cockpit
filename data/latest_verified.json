@@ -1,0 +1,53 @@
+{
+  "as_of": "2026-09-08",
+  "reporting_period": "2026-Q1",
+  "period_type": "quarter",
+  "classification": "OFFICIAL",
+  "source": "Insurance Authority announcement",
+  "source_url": "https://www.ia.gov.sa/en/media-center/news/128",
+  "metrics": [
+    {
+      "id": "gwp",
+      "label": "Gross written premium",
+      "value": 29.8,
+      "unit": "SAR bn"
+    },
+    {
+      "id": "gwp_yoy",
+      "label": "GWP YoY growth",
+      "value": 14.4,
+      "unit": "%"
+    },
+    {
+      "id": "combined_ratio",
+      "label": "Net combined ratio",
+      "value": 98.3,
+      "unit": "%"
+    },
+    {
+      "id": "health_gwp",
+      "label": "Health GWP",
+      "value": 18.5,
+      "unit": "SAR bn"
+    },
+    {
+      "id": "motor_gwp",
+      "label": "Motor GWP",
+      "value": 5,
+      "unit": "SAR bn"
+    },
+    {
+      "id": "insured_vehicles",
+      "label": "Insured vehicles",
+      "value": 11.2,
+      "unit": "million"
+    },
+    {
+      "id": "domestic_reinsurance",
+      "label": "Domestic reinsurance share of ceded premiums",
+      "value": 37,
+      "unit": "%"
+    }
+  ],
+  "note": "Curated from the IA publication dated 8 September 2026. Quarterly amounts must not be compared with full-year 2025 amounts. Automatic discovery of new publications does not automatically validate numerical extraction."
+}
